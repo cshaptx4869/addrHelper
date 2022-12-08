@@ -140,6 +140,7 @@ layui.define(['jquery', 'layer'], function (exports) {
         request = null
         layerIndex = 0
         locationInfo = null
+        suggestionOptions = null
         selectAddressInfo = null
 
         render(options) {
@@ -172,13 +173,22 @@ layui.define(['jquery', 'layer'], function (exports) {
                 title: this._options.title,
                 content: `
                     <div class="addrhelper-getpoint">
+                        <!-- 坐标拾取 -->
                         <div class="addrhelper-getpoint-map">
                             <div id="addrhelper-map-container"></div>
                             <div class="addrhelper-getpoint-search">
                                 <input type="text" class="addrhelper-search-input" placeholder="输入地址" value="">
                             </div>
                             <div class="addrhelper-getpoint-tips"></div>
+                            <div class="addrhelper-search-suggestion">
+                                <div class="addrhelper-search-show-btn">
+                                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC4AAAAuCAYAAABXuSs3AAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAALqADAAQAAAABAAAALgAAAABSkiQEAAAB4UlEQVRoBe3YP0vDQBQA8Hdp8Q86VHRz8mOI0kVB9AN0dHMStEmWYkEcrJ3sv6EgiB/ASVzU1Yr6OUTwz1yUqM3zbii9BJuKfe8GuYOQd5fw7pdHyB0BsM1WwFbAVsBWwFZAq4C/dzRTKDentCGW0KHM6hWr+fDz7SVoB68y9ihzx3ORwRFRIMK+PBx5pEOEQ7dYL8QnpOqTwYUQKFFPOgwxLHPhyeAKnErBOgjRNoFP6ZMMG99eXz0uZFdbKCAnc4308uHyfHYtuG9d3vTGhotI4Ypy17p8MIEnh5vCs8BN4Nng3HhWOCeeHc6FNwLnwAuV1GTzi/XFDuAFIE7q8zoC3ErJreljSbFxuML8hBcCPmB6NlP1cu9J4O410iW/m3TgGXFCViwduQ+hM5d+DiNjCR3jcH+nthIKOJO7yTHdJTeVW7IF+lhSbBTeDy13lpu1g+3jJGj8mrF3PAldLeWbcdigvhE4NVo9FDucA80O50KzwjnRbHBuNAvcBFrBSTdZ3m59Sf6aOI8vLuo7/ZdPngL2a9Flt99dvxwPv/AEILoicqAVh2zlVD+E5Mc1oz8jF5oULpEIKHy1y5OLg9zhORvUr4deFPLYrZyONxqNUfLENqGtgK2ArYCtwL+qwDfBhRfsRIjmWgAAAABJRU5ErkJggg==" alt="">
+                                    <span>展开搜索列表</span>
+                                </div>
+                                <div class="addrhelper-search-list"></div>
+                            </div>
                         </div>
+                        <!-- 坐标信息 -->
                         <div class="addrhelper-getpoint-info">
                             <div class="title">点图获取坐标</div>
                             <div class="item">
@@ -198,8 +208,7 @@ layui.define(['jquery', 'layer'], function (exports) {
                                 <div class="input poi"></div>
                             </div>
                         </div>
-                    </div>
-                    <div class="addrhelper-search-suggestion"></div>`,
+                    </div>`,
                 area: [this._options.width, this._options.height],
                 btn: ['确定', '取消'],
                 maxmin: true,
@@ -219,166 +228,189 @@ layui.define(['jquery', 'layer'], function (exports) {
             if (!$('#addrHelperCSS').length) {
                 $("head").append(`
                     <style id="addrHelperCSS">
-                        /* 获取坐标容器 */
                         .addrhelper-getpoint {
-                            position: relative;
-                            height: 100%;
-                            width: 100%;
-                            display: flex;
+                          position: relative;
+                          height: 100%;
+                          width: 100%;
+                          display: flex;
                         }
-                        
-                        /* 获取坐标地图 */
-                        .addrhelper-getpoint-map {
-                            width: 70%;
+                        .addrhelper-getpoint .addrhelper-getpoint-map {
+                          width: 70%;
                         }
-                        
-                        .addrhelper-getpoint-map #addrhelper-map-container {
-                            height: 100%;
-                            width: 100%;
+                        .addrhelper-getpoint .addrhelper-getpoint-map #addrhelper-map-container {
+                          height: 100%;
+                          width: 100%;
                         }
-                        
-                        .addrhelper-getpoint-map .addrhelper-getpoint-search {
-                            display: flex;
-                            position: absolute;
-                            top: 30px;
-                            left: 30px;
-                            width: 300px;
-                            height: 36px;
-                            border: 1px solid #F3F3F3;
-                            box-sizing: border-box;
-                            border-radius: 5px;
-                            line-height: 36px;
-                            background-color: #FFFFFF;
-                            z-index: 9999;
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-getpoint-search {
+                          display: flex;
+                          position: absolute;
+                          top: 20px;
+                          left: 20px;
+                          width: 300px;
+                          height: 36px;
+                          border: 1px solid #F3F3F3;
+                          box-sizing: border-box;
+                          border-radius: 5px;
+                          line-height: 36px;
+                          background-color: #FFFFFF;
+                          z-index: 9999;
                         }
-                        
-                        .addrhelper-getpoint-map .addrhelper-getpoint-search:hover {
-                            border: 1px solid #CCCCCC;
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-getpoint-search:hover {
+                          border: 1px solid #CCCCCC;
                         }
-                        
-                        .addrhelper-getpoint-map .addrhelper-getpoint-search input {
-                            width: 100%;
-                            flex: 1;
-                            padding-left: 8px;
-                            border: none;
-                            outline: none;
-                            border-radius: 5px;
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-getpoint-search input {
+                          width: 100%;
+                          flex: 1;
+                          padding-left: 8px;
+                          border: none;
+                          outline: none;
+                          border-radius: 5px;
                         }
-                        
-                        .addrhelper-getpoint-map .addrhelper-getpoint-tips {
-                            position: absolute;
-                            z-index: 9999;
-                            background-color: #484847;
-                            color: #FFFFFF;
-                            padding: 5px;
-                            border-radius: 3px;
-                            font-size: 12px;
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-getpoint-tips {
+                          position: absolute;
+                          z-index: 9999;
+                          background-color: #484847;
+                          color: #FFFFFF;
+                          padding: 5px;
+                          border-radius: 3px;
+                          font-size: 12px;
                         }
-                        
-                         /* 获取坐标信息 */
-                        .addrhelper-getpoint-info {
-                            width: 30%;
-                            background-color: #FFFFFF;
-                            padding: 25px 20px;
-                            box-sizing: border-box;
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion {
+                          width: 300px;
+                          max-height: 300px;
+                          overflow-y: auto;
+                          box-sizing: border-box;
+                          position: absolute;
+                          top: 56px;
+                          left: 20px;
+                          background-color: #FFFFFF;
+                          z-index: 9999;
                         }
-                        
-                        .addrhelper-getpoint-info .title {
-                            font-size: 16px;
-                            color: #1b202c;
-                            letter-spacing: 0;
-                            line-height: 24px;
-                            font-weight: 600;
-                            min-height: 24px;
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion::-webkit-scrollbar {
+                          width: 6px;
+                          height: 6px;
+                          background-color: #F5F5F5;
                         }
-                        
-                        .addrhelper-getpoint-info .item {
-                            margin-top: 20px;
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion::-webkit-scrollbar-thumb {
+                          background-color: #DDDEE0;
+                          background-clip: padding-box;
+                          border-radius: 3px;
                         }
-                        
-                        .addrhelper-getpoint-info .label {
-                            margin-bottom: 4px;
-                            font-size: 14px;
-                            color: #1b202c;
-                            letter-spacing: 0;
-                            line-height: 22px;
-                            font-weight: 600;
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion .addrhelper-search-show-btn {
+                          height: 0;
+                          overflow: hidden;
+                          display: flex;
+                          justify-content: center;
+                          align-items: center;
+                          cursor: pointer;
                         }
-                        
-                        .addrhelper-getpoint-info .input {
-                            padding: 0 40px 0 8px;
-                            min-height: 34px;
-                            line-height: 34px;
-                            background: rgba(27,32,44,.03);
-                            border: 1px solid #ced2d9;
-                            border-radius: 4px;
-                            font-size: 14px;
-                            color: #1b202c;
-                            font-weight: 400;
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion .addrhelper-search-show-btn img {
+                          height: 23px;
+                          width: 23px;
+                          transform: rotate(90deg);
                         }
-                        
-                        /* 地址搜索提示 */
-                        .addrhelper-search-suggestion {
-                            width: 300px;
-                            max-height: 300px;
-                            overflow-y: auto;
-                            box-sizing: border-box;
-                            position: absolute;
-                            top: 66px;
-                            left: 30px;
-                            background-color: #FFFFFF;
-                            z-index: 9999;
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion .addrhelper-search-show-btn span {
+                          opacity: 0.8;
+                          font-size: 14px;
+                          color: #1B202C;
+                          font-weight: 400;
                         }
-                        
-                        .addrhelper-search-suggestion::-webkit-scrollbar {
-                            width: 6px;
-                            height: 6px;
-                            background-color: #F5F5F5;
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion .addrhelper-search-list .addrhelper-search-address {
+                          box-sizing: border-box;
+                          padding: 0 15px;
                         }
-                        
-                        .addrhelper-search-suggestion::-webkit-scrollbar-thumb {
-                            background-color: #DDDEE0;
-                            background-clip: padding-box;
-                            border-radius: 3px;
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion .addrhelper-search-list .addrhelper-search-address:hover {
+                          background-color: #F5F9FF;
+                          cursor: pointer;
                         }
-                        
-                        .addrhelper-search-suggestion .addrhelper-search-address {
-                            padding: 12px;
-                        } 
-                        
-                        .addrhelper-search-suggestion .addrhelper-search-address:hover {
-                            background-color: #F5F9FF;
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion .addrhelper-search-list .addrhelper-search-address .border {
+                          display: flex;
+                          align-items: center;
+                          box-sizing: border-box;
+                          padding: 10px 0;
+                          border-bottom: 1px solid rgba(27, 32, 44, 0.05);
                         }
-                        
-                        .addrhelper-search-suggestion .addrhelper-search-address .title {
-                            font-size: 14px;
-                            color: #1b202c;
-                            line-height: 22px;
-                            font-weight: 600;
-                            margin-bottom: 4px;
-                            white-space: nowrap;
-                            overflow: hidden;
-                            text-overflow: ellipsis;
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion .addrhelper-search-list .addrhelper-search-address .border .index {
+                          height: 24px;
+                          width: 24px;
+                          background: rgba(0, 98, 255, 0.08);
+                          margin-right: 8px;
+                          font-size: 12px;
+                          color: #0062FF;
+                          text-align: center;
+                          line-height: 24px;
+                          font-weight: 400;
+                          border-radius: 50%;
                         }
-                        
-                        .addrhelper-search-suggestion .addrhelper-search-address .address {
-                            font-size: 12px;
-                            color: #535B6E;
-                            line-height: 18px;
-                            font-weight: 400;
-                            white-space: nowrap;
-                            overflow: hidden;
-                            text-overflow: ellipsis;
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion .addrhelper-search-list .addrhelper-search-address .border .info {
+                          width: calc(100% - 32px);
                         }
-                        
-                        .addrhelper-search-suggestion .addrhelper-search-address-active {
-                            background-color: #EBF3FF;
-                        } 
-                        
-                        .addrhelper-search-suggestion .addrhelper-search-address-active .title,
-                        .addrhelper-search-suggestion .addrhelper-search-address-active .address {
-                            color: #0062FF;
-                        } 
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion .addrhelper-search-list .addrhelper-search-address .border .info .title {
+                          font-size: 14px;
+                          color: #1b202c;
+                          line-height: 22px;
+                          font-weight: 600;
+                          margin-bottom: 4px;
+                          white-space: nowrap;
+                          overflow: hidden;
+                          text-overflow: ellipsis;
+                        }
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion .addrhelper-search-list .addrhelper-search-address .border .info .address {
+                          font-size: 12px;
+                          color: #535B6E;
+                          line-height: 18px;
+                          font-weight: 400;
+                          white-space: nowrap;
+                          overflow: hidden;
+                          text-overflow: ellipsis;
+                        }
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion .addrhelper-search-list .addrhelper-search-address-active {
+                          background-color: #EBF3FF;
+                        }
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion .addrhelper-search-list .addrhelper-search-address-active .border .index {
+                          background-color: #0062FF;
+                          color: #FFFFFF;
+                        }
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion .addrhelper-search-list .addrhelper-search-address-active .border .info .title,
+                        .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-search-suggestion .addrhelper-search-list .addrhelper-search-address-active .border .info .address {
+                          color: #0062FF;
+                        }
+                        .addrhelper-getpoint .addrhelper-getpoint-info {
+                          width: 30%;
+                          background-color: #FFFFFF;
+                          padding: 25px 20px;
+                          box-sizing: border-box;
+                        }
+                        .addrhelper-getpoint .addrhelper-getpoint-info .title {
+                          font-size: 16px;
+                          color: #1b202c;
+                          letter-spacing: 0;
+                          line-height: 24px;
+                          font-weight: 600;
+                          min-height: 24px;
+                        }
+                        .addrhelper-getpoint .addrhelper-getpoint-info .item {
+                          margin-top: 20px;
+                        }
+                        .addrhelper-getpoint .addrhelper-getpoint-info .label {
+                          margin-bottom: 4px;
+                          font-size: 14px;
+                          color: #1b202c;
+                          letter-spacing: 0;
+                          line-height: 22px;
+                          font-weight: 600;
+                        }
+                        .addrhelper-getpoint .addrhelper-getpoint-info .input {
+                          padding: 0 40px 0 8px;
+                          min-height: 34px;
+                          line-height: 34px;
+                          background: rgba(27, 32, 44, 0.03);
+                          border: 1px solid #ced2d9;
+                          border-radius: 4px;
+                          font-size: 14px;
+                          color: #1b202c;
+                          font-weight: 400;
+                        }
                     </style>`
                 )
             }
@@ -465,6 +497,12 @@ layui.define(['jquery', 'layer'], function (exports) {
                     _this.reloadSelectAddress(lat, lng, result.formatted_addresses.recommend, result.address)
                     _this.setMapCenter(lat, lng)
                 }
+
+                if (_this.suggestionOptions !== null) {
+                    $(".addrhelper-search-suggestion .addrhelper-search-list").hide()
+                    $(".addrhelper-search-suggestion .addrhelper-search-show-btn").css("height", 38)
+                    $(".addrhelper-search-suggestion .addrhelper-search-address").removeClass("addrhelper-search-address-active")
+                }
             })
         }
 
@@ -491,6 +529,7 @@ layui.define(['jquery', 'layer'], function (exports) {
         eventListen() {
             this.inputListen()
             this.addressSelectListen()
+            this.showListListen()
         }
 
         /**
@@ -504,17 +543,25 @@ layui.define(['jquery', 'layer'], function (exports) {
                     const suggestionReturn = await _this.suggestion(this.value, region)
                     let suggestion = ""
                     if (suggestionReturn.status === 0) {
+                        _this.suggestionOptions = suggestionReturn.data
                         suggestionReturn.data.forEach(function (item, index, arr) {
                             suggestion += `
                                 <div class="addrhelper-search-address" data-info='${JSON.stringify(item)}'>
-                                    <div class="title">${item.title} </div>
-                                    <div class="address">${item.address}</div>
+                                    <div class="border">
+                                        <div class="index">${index + 1}</div>
+                                        <div class="info">
+                                            <div class="title">${item.title} </div>
+                                            <div class="address">${item.address}</div>
+                                        </div>
+                                    </div>
                                 </div>`
                         })
-                        $('.addrhelper-search-suggestion').html(suggestion)
+                        $('.addrhelper-search-suggestion .addrhelper-search-list').html(suggestion).show()
                     }
                 } else {
-                    $('.addrhelper-search-suggestion').html("")
+                    $('.addrhelper-search-suggestion .addrhelper-search-list').html("")
+                    $('.addrhelper-search-suggestion .addrhelper-search-show-btn').css("height", 0)
+                    _this.suggestionOptions = null
                     _this.locationInfo && _this.setMapCenter(_this.locationInfo.location.lat, _this.locationInfo.location.lng)
                 }
             }, 500))
@@ -532,6 +579,16 @@ layui.define(['jquery', 'layer'], function (exports) {
                 _this.reloadSelectAddress(adInfo.location.lat, adInfo.location.lng, adInfo.title, adInfo.address, adInfo.id)
                 _this.setMapCenter(adInfo.location.lat, adInfo.location.lng)
                 _this.setMakerLayer(adInfo.location.lat, adInfo.location.lng)
+            })
+        }
+
+        /**
+         * 地址展开监听
+         */
+        showListListen() {
+            $("body").on("click", ".addrhelper-search-suggestion .addrhelper-search-show-btn", function () {
+                $(this).css("height", 0)
+                $(".addrhelper-search-suggestion .addrhelper-search-list").show()
             })
         }
 
