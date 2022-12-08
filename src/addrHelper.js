@@ -126,6 +126,8 @@ layui.define(['jquery', 'layer'], function (exports) {
     class AddrHelper {
         map = null
         makerLayer = null
+        controlTypeMap = null
+        controlPositionMap = null
         request = null
         locationInfo = null
         selectAddressInfo = null
@@ -143,7 +145,7 @@ layui.define(['jquery', 'layer'], function (exports) {
             this.request = new Request("https://apis.map.qq.com").jsonp().extraData({key: options.key, output: "jsonp"})
             this.dynamicLoadHtml(options)
             this.dynamicLoadCss()
-            this.listen()
+            this.eventListen()
             //注意：不支持file://方式使用Javascript API GL 详见 https://lbs.qq.com/webApi/javascriptGL/glGuide/glBasic
             this.dynamicLoadJs(`https://map.qq.com/api/gljs?v=1.exp&key=${options.key}`, () => {
                 if (options.lat !== undefined && options.lat && options.lng !== undefined && options.lng) {
@@ -405,8 +407,6 @@ layui.define(['jquery', 'layer'], function (exports) {
          * @returns {Promise<void>}
          */
         async initMap(lat, lng) {
-            const _this = this
-
             if (!lat || !lng) {
                 let ipLocationReturn = await this.ipLocation()
                 if (ipLocationReturn.status === 0) {
@@ -417,12 +417,23 @@ layui.define(['jquery', 'layer'], function (exports) {
             }
 
             this.map = new TMap.Map("addrhelper-map-container", {
-                center: new TMap.LatLng(lat, lng)
+                center: new TMap.LatLng(lat, lng),
+                zoom: 13
             });
 
             this.makerLayer = new TMap.MultiMarker({
                 map: this.map
             })
+
+            this.initMapConstant()
+            this.initMapListen()
+
+            this.setZoomControl("center-right")
+            this.removeControl("rotation")
+        }
+
+        initMapListen() {
+            const _this = this
 
             this.map.on("mousemove", function (event) {
                 let lat = event.latLng.getLat().toFixed(6);
@@ -436,6 +447,7 @@ layui.define(['jquery', 'layer'], function (exports) {
             })
 
             this.map.on("mouseout", function (event) {
+                $("#addrhelper-map-container").css("cursor", "default")
                 $(".addrhelper-getpoint-tips").hide()
             })
 
@@ -451,7 +463,27 @@ layui.define(['jquery', 'layer'], function (exports) {
             })
         }
 
-        listen() {
+        initMapConstant() {
+            this.controlTypeMap = {
+                scale: TMap.constants.DEFAULT_CONTROL_ID.SCALE,
+                zoom: TMap.constants.DEFAULT_CONTROL_ID.ZOOM,
+                rotation: TMap.constants.DEFAULT_CONTROL_ID.ROTATION,
+            }
+
+            this.controlPositionMap = {
+                "top-left": TMap.constants.CONTROL_POSITION.TOP_LEFT,
+                "top-center": TMap.constants.CONTROL_POSITION.TOP_CENTER,
+                "top-right": TMap.constants.CONTROL_POSITION.TOP_RIGHT,
+                "center-left": TMap.constants.CONTROL_POSITION.CENTER_LEFT,
+                "center": TMap.constants.CONTROL_POSITION.CENTER,
+                "center-right": TMap.constants.CONTROL_POSITION.CENTER_RIGHT,
+                "bottom-left": TMap.constants.CONTROL_POSITION.BOTTOM_LEFT,
+                "bottom-center": TMap.constants.CONTROL_POSITION.BOTTOM_CENTER,
+                "bottom-right": TMap.constants.CONTROL_POSITION.BOTTOM_RIGHT,
+            }
+        }
+
+        eventListen() {
             this.inputListen()
             this.addressSelectListen()
         }
@@ -461,8 +493,8 @@ layui.define(['jquery', 'layer'], function (exports) {
          */
         inputListen() {
             const _this = this
-            $("body").on('input', ".addrhelper-search-input", Utils.debounce(async function () {
-                if (this.value) {
+            $("body").on('input', ".addrhelper-search-input", Utils.debounce(async function (event) {
+                if (event.currentTarget.value) {
                     let region = _this.locationInfo ? _this.locationInfo.ad_info.city : ""
                     const suggestionReturn = await _this.suggestion(this.value, region)
                     let suggestion = ""
@@ -520,6 +552,7 @@ layui.define(['jquery', 'layer'], function (exports) {
          * @param lat
          * @param lng
          * @link https://lbs.qq.com/webApi/javascriptGL/glGuide/glMap
+         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/docIndexMap
          */
         setMapCenter(lat, lng) {
             this.map.setCenter(new TMap.LatLng(lat, lng))
@@ -530,12 +563,52 @@ layui.define(['jquery', 'layer'], function (exports) {
          * @param lat
          * @param lng
          * @link https://lbs.qq.com/webApi/javascriptGL/glGuide/glMarker
+         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocMarker
          */
         setMakerLayer(lat, lng) {
             this.makerLayer.setGeometries([])
             this.makerLayer.add([{
                 position: new TMap.LatLng(lat, lng)
             }])
+        }
+
+        /**
+         * 控件
+         * @link https://lbs.qq.com/webApi/javascriptGL/glGuide/glMarker
+         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocControl
+         * @param type
+         * @returns {*}
+         */
+        getControl(type) {
+            if (this.controlTypeMap[type] === undefined) {
+                throw new Error("控件type非法")
+            }
+            return this.map.getControl(this.controlTypeMap[type])
+        }
+
+        /**
+         * 移除控件
+         * @param type
+         * @returns {*}
+         */
+        removeControl(type) {
+            if (this.controlTypeMap[type] === undefined) {
+                throw new Error("控件type非法")
+            }
+            return this.map.removeControl(this.controlTypeMap[type])
+        }
+
+        /**
+         * 设置缩放控件
+         * @param position
+         * @param numVisible
+         * @returns {*}
+         */
+        setZoomControl(position = "bottom-right", numVisible = false) {
+            if (this.controlPositionMap[position] === undefined) {
+                position = "bottom-right"
+            }
+            return this.map.getControl("zoom").setPosition(this.controlPositionMap[position]).setNumVisible(numVisible)
         }
 
         /**
