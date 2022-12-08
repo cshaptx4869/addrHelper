@@ -10,7 +10,11 @@
 
 [GitHub](https://cshaptx4869.github.io/mypage/addrHelper/addrHelper.html)（优先更新!）
 
-![](https://foruda.gitee.com/images/1670399680134308210/e6040f46_5507348.jpeg)
+![](https://foruda.gitee.com/images/1670470874110770699/77b3a440_5507348.jpeg)
+
+![](https://foruda.gitee.com/images/1670470895786633868/6750c0de_5507348.jpeg)
+
+
 
 ## 示例
 
@@ -20,8 +24,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>腾讯地图坐标拾取器</title>
 </head>
@@ -30,7 +33,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/layui/2.6.8/layui.js"
         integrity="sha512-lH7rGfsFWwehkeyJYllBq73IsiR7RH2+wuOVjr06q8NKwHp5xVnkdSvUm8RNt31QCROqtPrjAAd1VuNH0ISxqQ=="
         crossorigin="anonymous" referrerpolicy="no-referrer">
-        </script>
+    </script>
     <script>
         layui.config({
             base: './'
@@ -46,8 +49,12 @@
                 width: "80vw", //可选项，弹窗的宽度 默认80vw
                 height: "80vh", //可选项，弹窗的高度 默认80vh
                 success: function (res) { //可选项，地址选择成功后回调
-                    console.log(res)
+                    if (res === null) {
+                        layer.msg("请选择地址后再提交", {icon: 2})
+                        return
+                    }
                     layer.alert(JSON.stringify(res))
+                    // addrHelper.close() //关闭坐标拾取器
                 }
             })
         })

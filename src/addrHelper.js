@@ -124,43 +124,52 @@ layui.define(['jquery', 'layer'], function (exports) {
     }
 
     class AddrHelper {
+        _options = {
+            key: "", //必传，腾讯地图api key 申请方法见：https://lbs.qq.com/webApi/javascriptGL/glGuide/glBasic
+            lat: 0, //可选项，初始化纬度
+            lng: 0, //可选项，初始化经度
+            title: "腾讯地图坐标拾取器", //可选项，弹窗标题
+            width: "80vw", //可选项，弹窗的宽度
+            height: "80vh", //可选项，弹窗的高度
+            success: null, //可选项，地址选择成功后回调
+        }
         map = null
         makerLayer = null
         controlTypeMap = null
         controlPositionMap = null
         request = null
+        layerIndex = 0
         locationInfo = null
         selectAddressInfo = null
 
         render(options) {
-            if (options.key === undefined || !options.key) {
+            this._options = {...this._options, ...options}
+            if (!this._options.key) {
                 throw new Error("参数key必传")
             }
-            if (options.width === undefined || !options.width) {
-                options.width = '80vw'
-            }
-            if (options.height === undefined || !options.height) {
-                options.height = '80vh'
-            }
-            this.request = new Request("https://apis.map.qq.com").jsonp().extraData({key: options.key, output: "jsonp"})
-            this.dynamicLoadHtml(options)
+            this.request = new Request("https://apis.map.qq.com").jsonp().extraData({key: this._options.key, output: "jsonp"})
+            this.dynamicLoadHtml()
             this.dynamicLoadCss()
             this.eventListen()
             //注意：不支持file://方式使用Javascript API GL 详见 https://lbs.qq.com/webApi/javascriptGL/glGuide/glBasic
-            this.dynamicLoadJs(`https://map.qq.com/api/gljs?v=1.exp&key=${options.key}`, () => {
-                if (options.lat !== undefined && options.lat && options.lng !== undefined && options.lng) {
-                    this.initMap(Number(options.lat), Number(options.lng))
+            this.dynamicLoadJs(`https://map.qq.com/api/gljs?v=1.exp&key=${this._options.key}`, () => {
+                if (this._options.lat && this._options.lng) {
+                    this.initMap(Number(this._options.lat), Number(this._options.lng))
                 } else {
                     this.initMap()
                 }
             })
         }
 
-        dynamicLoadHtml(options) {
+        close(v) {
+            this.layerIndex && layer.close(this.layerIndex)
+        }
+
+        dynamicLoadHtml() {
             const _this = this
-            layer.open({
+            this.layerIndex = layer.open({
                 type: 1,
-                title: "坐标拾取器",
+                title: this._options.title,
                 content: `
                     <div class="addrhelper-getpoint">
                         <div class="addrhelper-getpoint-map">
@@ -191,17 +200,12 @@ layui.define(['jquery', 'layer'], function (exports) {
                         </div>
                     </div>
                     <div class="addrhelper-search-suggestion"></div>`,
-                area: [options.width, options.height],
+                area: [this._options.width, this._options.height],
                 btn: ['确定', '取消'],
                 maxmin: true,
                 yes: function (index, layero) {
-                    if (!_this.selectAddressInfo) {
-                        layer.msg("请选择地址后再提交", {icon: 2})
-                        return
-                    }
-                    layer.close(index)
-                    if (options.success !== undefined && typeof options.success === "function") {
-                        options.success(_this.selectAddressInfo)
+                    if (_this._options.success && typeof _this._options.success === "function") {
+                        _this._options.success(_this.selectAddressInfo, index, layero)
                     }
                 },
                 cancel: function () {
@@ -459,6 +463,7 @@ layui.define(['jquery', 'layer'], function (exports) {
                 if (geocoderResponse.status === 0) {
                     const result = geocoderResponse.result
                     _this.reloadSelectAddress(lat, lng, result.formatted_addresses.recommend, result.address)
+                    _this.setMapCenter(lat, lng)
                 }
             })
         }
@@ -555,7 +560,10 @@ layui.define(['jquery', 'layer'], function (exports) {
          * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/docIndexMap
          */
         setMapCenter(lat, lng) {
-            this.map.setCenter(new TMap.LatLng(lat, lng))
+            this.map.easeTo(
+                {center: new TMap.LatLng(lat, lng)}
+            )
+            // this.map.setCenter(new TMap.LatLng(lat, lng))
         }
 
         /**
