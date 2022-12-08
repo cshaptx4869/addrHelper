@@ -556,6 +556,7 @@ layui.define(['jquery', 'layer'], function (exports) {
                                     </div>
                                 </div>`
                         })
+                        $('.addrhelper-search-suggestion .addrhelper-search-show-btn').css("height", 0)
                         $('.addrhelper-search-suggestion .addrhelper-search-list').html(suggestion).show()
                     }
                 } else {
