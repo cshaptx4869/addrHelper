@@ -132,17 +132,20 @@ layui.define(['jquery', 'layer'], function (exports) {
             width: "80vw", //可选项，弹窗的宽度
             height: "80vh", //可选项，弹窗的高度
             success: null, //可选项，地址选择成功后回调
+            cssDebug: false //可选项，主要为开发时调试样式
         }
         map = null
         makerLayer = null
-        editor = null
+        geometryEditor = null
         controlTypeMap = null
         controlPositionMap = null
+        editorModeMap = null
         request = null
         layerIndex = 0
         locationInfo = null
         suggestionOptions = null
         selectAddressInfo = null
+        drawGeometryPaths = null
 
         render(options) {
             this._options = {...this._options, ...options}
@@ -151,7 +154,7 @@ layui.define(['jquery', 'layer'], function (exports) {
             }
             this.request = new Request("https://apis.map.qq.com").jsonp().extraData({key: this._options.key, output: "jsonp"})
             this.dynamicLoadHtml()
-            this.dynamicLoadCss()
+            !this._options.cssDebug && this.dynamicLoadCss()
             this.eventListen()
             //注意：不支持file://方式使用Javascript API GL 详见 https://lbs.qq.com/webApi/javascriptGL/glGuide/glBasic
             this.dynamicLoadJs(`https://map.qq.com/api/gljs?v=1.exp&key=${this._options.key}&libraries=tools`, () => {
@@ -192,26 +195,40 @@ layui.define(['jquery', 'layer'], function (exports) {
                                 <span class="icon"></span>
                                 <span>卫星</span>
                             </div>
-                            <div class="addrhelper-draw-toolbar"></div>
+                            <div class="addrhelper-toolbar">
+                                <div data-type="marker" class="tool tool-marker tool-active" title="点标记"></div>
+                                <div data-type="polygon" class="tool tool-polygon" title="多边形"></div>
+                                <div data-type="circle" class="tool tool-circle" title="圆形"></div>
+                                <div data-type="rectangle" class="tool tool-rectangle" title="矩形"></div>
+                                <div data-type="ellipse" class="tool tool-ellipse" title="椭圆"></div>
+                                <div data-type="delete" class="tool tool-delete" title="删除"></div>
+                            </div>    
                         </div>
                         <!-- 坐标信息 -->
                         <div class="addrhelper-getpoint-info">
                             <div class="title">点图获取坐标</div>
                             <div class="item">
-                                <p class="label">经度</p>
+                                <div class="label">经度</div>
                                 <div class="input lng"></div>
                             </div>
                             <div class="item">
-                                <p class="label">纬度</p>
+                                <div class="label">纬度</div>
                                 <div class="input lat"></div>
                             </div>
                             <div class="item">
-                                <p class="label">地址</p>
+                                <div class="label">地址</div>
                                 <div class="input address"></div>
                             </div>
                             <div class="item">
-                                <p class="label">POI ID</p>
+                                <div class="label">POI ID</div>
                                 <div class="input poi"></div>
+                            </div>
+                            <div class="item tips">
+                                <div class="label">绘画工具操作(非绘制模式)：</div>
+                                <div class="tip">单选：鼠标左键点击图形</div>
+                                <div class="tip">多选：按下ctrl键后点击多个图形</div>
+                                <div class="tip">删除：选中图形后按下delete键或点击删除按钮可删除图形</div>
+                                <div class="tip">编辑：选中图形后出现编辑点，拖动编辑点可移动顶点位置，双击实心编辑点可删除顶点</div>
                             </div>
                         </div>
                     </div>`,
@@ -220,7 +237,7 @@ layui.define(['jquery', 'layer'], function (exports) {
                 maxmin: true,
                 yes: function (index, layero) {
                     if (_this._options.success && typeof _this._options.success === "function") {
-                        _this._options.success(_this.selectAddressInfo, index, layero)
+                        _this._options.success(_this.selectAddressInfo, _this.drawGeometryPaths, index, layero)
                     }
                 },
                 cancel: function () {
@@ -231,8 +248,8 @@ layui.define(['jquery', 'layer'], function (exports) {
         }
 
         dynamicLoadCss() {
-            if (!$('#addrHelperCSS').length) {
-                $("head").append(`<style>
+            if (!$('style#addrHelperCSS').length) {
+                $("head").append(`<style id="addrHelperCSS">
                     .addrhelper-text-ellipsis {
                       white-space: nowrap;
                       overflow: hidden;
@@ -416,6 +433,51 @@ layui.define(['jquery', 'layer'], function (exports) {
                       background-color: #EBF3FF;
                       color: #0062FF;
                     }
+                    .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar {
+                      position: absolute;
+                      right: 20px;
+                      bottom: 20px;
+                      z-index: 9999;
+                    }
+                    .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool {
+                      width: 30px;
+                      height: 30px;
+                      float: left;
+                      margin: 1px;
+                      padding: 4px;
+                      border-radius: 3px;
+                      background-size: 30px 30px;
+                      background-position: 4px 4px;
+                      background-repeat: no-repeat;
+                      box-shadow: 0 1px 2px 0 #e4e7ef;
+                      background-color: #ffffff;
+                      border: 1px solid #ffffff;
+                    }
+                    .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool:hover {
+                      border-color: #789cff;
+                    }
+                    .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool-active {
+                      border-color: #d5dff2;
+                      background-color: #d5dff2;
+                    }
+                    .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool-marker {
+                      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAe1BMVEUAAAAuUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf+dtgltAAAAKHRSTlMAgPkR2afg6YP69tGRjIfywa2ilXVuHwPtxbHKtmcwFQebflZN4kJBQ7UEGAAAAVxJREFUOMvNlFlygzAQBSUh9s0sDuB9S9L3P2HKxiSxJONf998UXQMzPEm8D7vTEEI4nHaz2iXll/TyVPMqKIc6lzKvhxIqz+19aNQmkneijUJ/OPtpwkb+IwvRrp4rwkI+UISsbO9MkkmDLOFsep1mIy026M4Qvynvc/iBUoF/n6jnyxAzhvHZghuLqcoMcU099kMtPW+pGHvWrA2xZxwlYHktW4JbmdMbYsz4iQrvtlSUvAGGmFC4xILEEAMa16szAkOsqFzDVNa/aUld60lpzejEcT4tPI6nhecxVoB8UmmR4ttpTKhMryJxJHJLfHz0jjFb4aAhaYyQNcJFt6LM/7y8ZNUJJ4fFGPIp3ovD02OY8hndkxiQeuIpe816FNfo/exFoajHHKqdmKWlj6SMQloxT6evcfCtQ+Xau5ZSW5u22aOu8d2Ll4TUR0rxmgIgF685FH3ZHMQb8QPO1R7eUFa7JwAAAABJRU5ErkJggg==");
+                    }
+                    .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool-polygon {
+                      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAgVBMVEUAAAAuUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf+fy4kNAAAAKnRSTlMAgO6J4ALbk47Ur/vkxfbnzsGclzupYh0RooY2CPK8ubZUTkNALQzidBcaeiw5AAABGElEQVQ4y9WUV27DMBBEtRJNiurdklzjxClz/wMmcBTCFIvz6/c9wMMMsBs8J3uRjP/JXSXAuoexzWcBxpHSxp/bHoGKqALqrS/3EiLs6YepRHhxxt4bQEZ0Y5aA2NtzO470TIoTIK+2FpSCC7qjZSgGs0V+a6FTAf1q0uGAciKDpNAnHXtAzmQh1iZ9zVAkZEWflIPH5GQKIZdgjJw81GiXYIeMPDC8/U1YoiUnLUrVRqD2mUWgaoM9Mi/uEMJrVjQ4koP817xwAXObu/t7OsAxeYNMO4oeZ5c51m8AnKxk6PQrKBDZzR+rc0yQeM2KAdxu3q2CY4rZZmbGIzghcZgNtxRxpDDMiq8UJsqs9eachYolGAXPxDfyLBxBd4pYrQAAAABJRU5ErkJggg==");
+                    }
+                    .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool-circle {
+                      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAASFBMVEUuUf8AAAAuUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf9KFc4ZAAAAF3RSTlOZAKC0883C9eze21kWYK5+PSKtez4hYkfRD1wAAADlSURBVDjLtdRZjsIwEEXRojxkHoG++99pdySHDhBbxQf3+0hREvvJxdjXYT9oqKuqDjr0BTg7Drk5A5eNNXFUER1js9HlDHYeH1QeafD47h1O0O5spy1Mr/AKUd6KcH2GHTg5yUF3hHdPlNMi/n6AjlYytbh/OOM1B9UzP6AjSLbAuMMeNA8V+gQHGinUMCSoxBKMaIKBsQRHQoI1WoJKnWCFFKMyQ/OjbS+zEsyfx/zBzb/QeCic+Zh9fnAvS+kqLJ9frq0pd10n6wBYJ6UwUqv+oTUzUqnb8+zdTEP6039/w439Apc7EgHZaHTcAAAAAElFTkSuQmCC");
+                    }
+                    .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool-rectangle {
+                      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoAgMAAADxkFD+AAAACVBMVEUAAAAuUf8uUf/ZwoV+AAAAAnRSTlMAgJsrThgAAAAeSURBVBjTYyAXaK0CgxWoTM1QMMgYZWIwcYQZmQAAl/5Vvwi1RhIAAAAASUVORK5CYII=");
+                    }
+                    .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool-ellipse {
+                      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAY1BMVEUAAAAuUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf8uUf+HzbSYAAAAIHRSTlMAgOK48Z+OseXdkotyEQoDycZPqvbe0qiFWDsIqWBOYlHlwV8AAADYSURBVDjL7ZTZDoIwEEU7XSlgZREVcbn//5UG0BCipfOu57E5SdPp3Cv+7C+lqaUGtKxNedlHrOaksUKfmk93KCUAWTtjC6LCGldPB+Ww9u4SkMrSCqvG07tYCAbwLX3h6gET3t6uAhRFUEC1e3lHZDlFyTMcZ9NBFrRBIeFG7wZtaROrcRMiZHCUwCEbRA9PSTr0ooVKiwqt8MjTYo5OHHBOi2cc+GLHvJr9GN54PHruwAPzCx/MpVD8NeMv7hKFayIKM008XA0zroFZAPFKqeZKqaZK+XmeX80YsKoPvWkAAAAASUVORK5CYII=");
+                    }
+                    .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool-delete {
+                      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoAgMAAADxkFD+AAAACVBMVEVHcEwuUf94nP9ar54sAAAAAXRSTlMAQObYZgAAADFJREFUeAFjIBGwhoYGYGGuWoXBFA0FgxBUJkPUKiBYykARM2rpQDMp9wUkSJCZJAEAnF5hx8tYRE0AAAAASUVORK5CYII=");
+                    }
                     .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-getpoint-tips {
                       position: absolute;
                       z-index: 9999;
@@ -443,7 +505,7 @@ layui.define(['jquery', 'layer'], function (exports) {
                     .addrhelper-getpoint .addrhelper-getpoint-info .item {
                       margin-top: 20px;
                     }
-                    .addrhelper-getpoint .addrhelper-getpoint-info .label {
+                    .addrhelper-getpoint .addrhelper-getpoint-info .item .label {
                       margin-bottom: 4px;
                       font-size: 14px;
                       color: #1b202c;
@@ -451,7 +513,7 @@ layui.define(['jquery', 'layer'], function (exports) {
                       line-height: 22px;
                       font-weight: 600;
                     }
-                    .addrhelper-getpoint .addrhelper-getpoint-info .input {
+                    .addrhelper-getpoint .addrhelper-getpoint-info .item .input {
                       padding: 0 40px 0 8px;
                       min-height: 34px;
                       line-height: 34px;
@@ -461,6 +523,11 @@ layui.define(['jquery', 'layer'], function (exports) {
                       font-size: 14px;
                       color: #1b202c;
                       font-weight: 400;
+                    }
+                    .addrhelper-getpoint .addrhelper-getpoint-info .tips .tip {
+                      margin-bottom: 5px;
+                      color: #999999;
+                      font-size: 14px;
                     }
                 </style>`)
             }
@@ -506,7 +573,7 @@ layui.define(['jquery', 'layer'], function (exports) {
             this.map = new TMap.Map("addrhelper-map-container", {
                 center: new TMap.LatLng(lat, lng),
                 zoom: 13
-            });
+            })
 
             //https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocMarker
             this.makerLayer = new TMap.MultiMarker({
@@ -514,14 +581,48 @@ layui.define(['jquery', 'layer'], function (exports) {
             })
 
             //附加库：地图工具 https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocEditor
-            this.editor = new TMap.tools.GeometryEditor({
-                map: this.map
+            //使用此库 地图会变成 2D 的
+            this.geometryEditor = new TMap.tools.GeometryEditor({
+                map: this.map,
+                overlayList: [
+                    {
+                        id: 'polygon',
+                        // https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#7
+                        overlay: new TMap.MultiPolygon({
+                            map: this.map,
+                        }),
+                    },
+                    {
+                        id: 'circle',
+                        // https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#13
+                        overlay: new TMap.MultiCircle({
+                            map: this.map,
+                        }),
+                    },
+                    {
+                        id: 'rectangle',
+                        // https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#MultiRectangle
+                        overlay: new TMap.MultiRectangle({
+                            map: this.map,
+                        }),
+                    },
+                    {
+                        id: 'ellipse',
+                        // https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#MultiEllipse
+                        overlay: new TMap.MultiEllipse({
+                            map: this.map,
+                        }),
+                    },
+                ],
+                actionMode: TMap.tools.constants.EDITOR_ACTION.INTERACT,
+                snappable: true,
+                selectable: true
             })
 
             this.initMapConstant()
             this.initMapListen()
 
-            this.setZoomControl("center-right")
+            this.setZoomControl("bottom-left", true)
             this.removeControl("rotation")
         }
 
@@ -545,21 +646,30 @@ layui.define(['jquery', 'layer'], function (exports) {
             })
 
             this.map.on("click", async function (event) {
-                let lat = event.latLng.getLat().toFixed(6);
-                let lng = event.latLng.getLng().toFixed(6);
-                _this.setMakerLayer(lat, lng)
+                let lat = event.latLng.getLat().toFixed(6)
+                let lng = event.latLng.getLng().toFixed(6)
+                let isDrawMode = _this.isDrawMode()
+                !isDrawMode && _this.setMakerLayer(lat, lng)
                 const geocoderResponse = await _this.geocoder(lat, lng)
                 if (geocoderResponse.status === 0) {
                     const result = geocoderResponse.result
                     _this.reloadSelectAddress(lat, lng, result.formatted_addresses.recommend, result.address)
-                    _this.setMapCenter(lat, lng)
+                    !isDrawMode && _this.setMapCenter(lat, lng)
                 }
 
-                if (_this.suggestionOptions !== null) {
+                if (!isDrawMode && _this.suggestionOptions !== null) {
                     $(".addrhelper-search-suggestion .addrhelper-search-list").hide()
                     $(".addrhelper-search-suggestion .addrhelper-search-show-btn").css("height", 38)
                     $(".addrhelper-search-suggestion .addrhelper-search-address").removeClass("addrhelper-search-address-active")
                 }
+            })
+
+            this.geometryEditor.on("draw_complete", function (geometry) {
+                const activeOverlay = _this.geometryEditor.getActiveOverlay()
+                const currentGeometryIndex = activeOverlay.overlay.geometries.findIndex(function (item) {
+                    return item.id === geometry.id;
+                })
+                _this.drawGeometryPaths = activeOverlay.overlay.geometries[currentGeometryIndex].paths
             })
         }
 
@@ -581,6 +691,11 @@ layui.define(['jquery', 'layer'], function (exports) {
                 "bottom-center": TMap.constants.CONTROL_POSITION.BOTTOM_CENTER,
                 "bottom-right": TMap.constants.CONTROL_POSITION.BOTTOM_RIGHT,
             }
+
+            this.editorModeMap = {
+                draw: TMap.tools.constants.EDITOR_ACTION.DRAW,
+                interact: TMap.tools.constants.EDITOR_ACTION.INTERACT,
+            }
         }
 
         eventListen() {
@@ -588,6 +703,7 @@ layui.define(['jquery', 'layer'], function (exports) {
             this.addressSelectListen()
             this.showListListen()
             this.baseMapListen()
+            this.toolListen()
         }
 
         /**
@@ -668,6 +784,31 @@ layui.define(['jquery', 'layer'], function (exports) {
                     baseMapType = "satellite"
                 }
                 _this.map.setBaseMap({type: baseMapType})
+            })
+        }
+
+        /**
+         * 工具监听
+         */
+        toolListen() {
+            let activeTool = $(".addrhelper-toolbar .tool-marker")
+            const _this = this
+            $("body").on("click", ".addrhelper-toolbar", function (event) {
+                if (event.target !== event.currentTarget) {
+                    if (event.target.dataset.type === "delete") {
+                        _this.geometryEditor.delete()
+                    } else {
+                        if (event.target.dataset.type !== "marker") {
+                            _this.setEditorMode("draw")
+                            _this.geometryEditor.setActiveOverlay(event.target.dataset.type)
+                        } else {
+                            _this.setEditorMode("interact")
+                        }
+                        activeTool && activeTool.removeClass("tool-active")
+                        activeTool = $(event.target)
+                        activeTool.addClass("tool-active")
+                    }
+                }
             })
         }
 
@@ -753,6 +894,25 @@ layui.define(['jquery', 'layer'], function (exports) {
                 position = "bottom-right"
             }
             return this.map.getControl("zoom").setPosition(this.controlPositionMap[position]).setNumVisible(numVisible)
+        }
+
+        /**
+         * 是否是绘画模式
+         * @returns {boolean}
+         */
+        isDrawMode() {
+            return this.geometryEditor.getActionMode() === this.editorModeMap["draw"]
+        }
+
+        /**
+         * 设置编辑器模式
+         * @param mode
+         */
+        setEditorMode(mode) {
+            if (this.editorModeMap[mode] === undefined) {
+                throw new Error("编辑器操作模式mode非法")
+            }
+            this.geometryEditor.setActionMode(this.editorModeMap[mode])
         }
 
         /**
