@@ -226,6 +226,12 @@
 .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool-delete {
   background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoAgMAAADxkFD+AAAACVBMVEVHcEwuUf94nP9ar54sAAAAAXRSTlMAQObYZgAAADFJREFUeAFjIBGwhoYGYGGuWoXBFA0FgxBUJkPUKiBYykARM2rpQDMp9wUkSJCZJAEAnF5hx8tYRE0AAAAASUVORK5CYII=");
 }
+.addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool-split {
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAACVBMVEVHcEwuUf94nP9ar54sAAAAAXRSTlMAQObYZgAAADdJREFUeNrt1EEKAAAERFHc/9AuMJImsZi/fgsp7EtexMAACTawWTMD0TSCryBsAHVSDNz6ivclJUcFWdE3iI0AAAAASUVORK5CYII=");
+}
+.addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool-union {
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoAgMAAADxkFD+AAAACVBMVEVHcEwuUf94nP9ar54sAAAAAXRSTlMAQObYZgAAADVJREFUeAFjIAaIhoKAAxpTbBUQrKQykzE0NAwLMwtI05k5NTQUC3MK0K1UZoJDNASFSRgAAEQyidHYx61BAAAAAElFTkSuQmCC");
+}
 .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-getpoint-tips {
   position: absolute;
   z-index: 9999;

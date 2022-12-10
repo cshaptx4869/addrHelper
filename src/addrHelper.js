@@ -128,7 +128,7 @@ layui.define(['jquery', 'layer'], function (exports) {
             key: "", //必传，腾讯地图api key 申请方法见：https://lbs.qq.com/webApi/javascriptGL/glGuide/glBasic
             lat: 0, //可选项，初始化纬度
             lng: 0, //可选项，初始化经度
-            title: "腾讯地图坐标拾取器", //可选项，弹窗标题
+            title: "腾讯地图小助手", //可选项，弹窗标题
             width: "80vw", //可选项，弹窗的宽度
             height: "80vh", //可选项，弹窗的高度
             success: null, //可选项，地址选择成功后回调
@@ -137,6 +137,7 @@ layui.define(['jquery', 'layer'], function (exports) {
         map = null
         makerLayer = null
         geometryEditor = null
+        overlayZIndex = 9999
         controlTypeMap = null
         controlPositionMap = null
         editorModeMap = null
@@ -145,7 +146,7 @@ layui.define(['jquery', 'layer'], function (exports) {
         locationInfo = null
         suggestionOptions = null
         selectAddressInfo = null
-        drawGeometryPaths = null
+        selectGeometry = null
 
         render(options) {
             this._options = {...this._options, ...options}
@@ -196,12 +197,14 @@ layui.define(['jquery', 'layer'], function (exports) {
                                 <span>卫星</span>
                             </div>
                             <div class="addrhelper-toolbar">
-                                <div data-type="marker" class="tool tool-marker tool-active" title="点标记"></div>
-                                <div data-type="polygon" class="tool tool-polygon" title="多边形"></div>
-                                <div data-type="circle" class="tool tool-circle" title="圆形"></div>
-                                <div data-type="rectangle" class="tool tool-rectangle" title="矩形"></div>
-                                <div data-type="ellipse" class="tool tool-ellipse" title="椭圆"></div>
-                                <div data-type="delete" class="tool tool-delete" title="删除"></div>
+                                <div data-action="marker" class="tool tool-marker tool-active" title="点标记"></div>
+                                <div data-action="polygon" class="tool tool-polygon" title="多边形"></div>
+                                <div data-action="circle" class="tool tool-circle" title="圆形"></div>
+                                <div data-action="rectangle" class="tool tool-rectangle" title="矩形"></div>
+                                <div data-action="ellipse" class="tool tool-ellipse" title="椭圆"></div>
+                                <div data-action="delete" class="tool tool-delete" title="删除"></div>
+                                <div data-action="split" class="tool tool-split" title="拆分"></div>
+                                <div data-action="union" class="tool tool-union" title="合并"></div>
                             </div>    
                         </div>
                         <!-- 坐标信息 -->
@@ -229,6 +232,9 @@ layui.define(['jquery', 'layer'], function (exports) {
                                 <div class="tip">多选：按下ctrl键后点击多个图形</div>
                                 <div class="tip">删除：选中图形后按下delete键或点击删除按钮可删除图形</div>
                                 <div class="tip">编辑：选中图形后出现编辑点，拖动编辑点可移动顶点位置，双击实心编辑点可删除顶点</div>
+                                <div class="tip">拆分：选中单个多边形后可绘制拆分线，拆分线绘制完成后自动进行拆分</div>
+                                <div class="tip">合并：选中多个相邻多边形后可进行合并，飞地形式的多边形不支持合并</div>
+                                <div class="tip">中断：按下esc键可中断当前操作，点选的图形将取消选中，编辑过程将中断</div>
                             </div>
                         </div>
                     </div>`,
@@ -237,7 +243,7 @@ layui.define(['jquery', 'layer'], function (exports) {
                 maxmin: true,
                 yes: function (index, layero) {
                     if (_this._options.success && typeof _this._options.success === "function") {
-                        _this._options.success(_this.selectAddressInfo, _this.drawGeometryPaths, index, layero)
+                        _this._options.success.call(_this, _this.selectAddressInfo, _this.selectGeometry?.paths ?? null, index, layero)
                     }
                 },
                 cancel: function () {
@@ -478,6 +484,12 @@ layui.define(['jquery', 'layer'], function (exports) {
                     .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool-delete {
                       background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoAgMAAADxkFD+AAAACVBMVEVHcEwuUf94nP9ar54sAAAAAXRSTlMAQObYZgAAADFJREFUeAFjIBGwhoYGYGGuWoXBFA0FgxBUJkPUKiBYykARM2rpQDMp9wUkSJCZJAEAnF5hx8tYRE0AAAAASUVORK5CYII=");
                     }
+                    .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool-split {
+                      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAACVBMVEVHcEwuUf94nP9ar54sAAAAAXRSTlMAQObYZgAAADdJREFUeNrt1EEKAAAERFHc/9AuMJImsZi/fgsp7EtexMAACTawWTMD0TSCryBsAHVSDNz6ivclJUcFWdE3iI0AAAAASUVORK5CYII=");
+                    }
+                    .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool-union {
+                      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoAgMAAADxkFD+AAAACVBMVEVHcEwuUf94nP9ar54sAAAAAXRSTlMAQObYZgAAADVJREFUeAFjIAaIhoKAAxpTbBUQrKQykzE0NAwLMwtI05k5NTQUC3MK0K1UZoJDNASFSRgAAEQyidHYx61BAAAAAElFTkSuQmCC");
+                    }
                     .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-getpoint-tips {
                       position: absolute;
                       z-index: 9999;
@@ -580,8 +592,9 @@ layui.define(['jquery', 'layer'], function (exports) {
                 map: this.map
             })
 
-            //附加库：地图工具 https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocEditor
-            //使用此库 地图会变成 2D 的
+            //附加库：地图工具 使用此库 地图会变成 2D 的
+            //https://lbs.qq.com/webApi/javascriptGL/glGuide/glEditor
+            //https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocEditor
             this.geometryEditor = new TMap.tools.GeometryEditor({
                 map: this.map,
                 overlayList: [
@@ -590,6 +603,7 @@ layui.define(['jquery', 'layer'], function (exports) {
                         // https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#7
                         overlay: new TMap.MultiPolygon({
                             map: this.map,
+                            zIndex: this.overlayZIndex
                         }),
                     },
                     {
@@ -615,6 +629,7 @@ layui.define(['jquery', 'layer'], function (exports) {
                     },
                 ],
                 actionMode: TMap.tools.constants.EDITOR_ACTION.INTERACT,
+                activeOverlayId: "polygon",
                 snappable: true,
                 selectable: true
             })
@@ -624,53 +639,10 @@ layui.define(['jquery', 'layer'], function (exports) {
 
             this.setZoomControl("bottom-left", true)
             this.removeControl("rotation")
-        }
 
-        initMapListen() {
-            const _this = this
-
-            this.map.on("mousemove", function (event) {
-                let lat = event.latLng.getLat().toFixed(6);
-                let lng = event.latLng.getLng().toFixed(6);
-                $(".addrhelper-getpoint-tips").css({
-                    top: event.point.y + 18,
-                    left: event.point.x + 18
-                }).html(`${lat},${lng}`).show()
-
-                $("#addrhelper-map-container").addClass("addrhelper-cursor-point")
-            })
-
-            this.map.on("mouseout", function (event) {
-                $("#addrhelper-map-container").removeClass("addrhelper-cursor-point")
-                $(".addrhelper-getpoint-tips").hide()
-            })
-
-            this.map.on("click", async function (event) {
-                let lat = event.latLng.getLat().toFixed(6)
-                let lng = event.latLng.getLng().toFixed(6)
-                let isDrawMode = _this.isDrawMode()
-                !isDrawMode && _this.setMakerLayer(lat, lng)
-                const geocoderResponse = await _this.geocoder(lat, lng)
-                if (geocoderResponse.status === 0) {
-                    const result = geocoderResponse.result
-                    _this.reloadSelectAddress(lat, lng, result.formatted_addresses.recommend, result.address)
-                    !isDrawMode && _this.setMapCenter(lat, lng)
-                }
-
-                if (!isDrawMode && _this.suggestionOptions !== null) {
-                    $(".addrhelper-search-suggestion .addrhelper-search-list").hide()
-                    $(".addrhelper-search-suggestion .addrhelper-search-show-btn").css("height", 38)
-                    $(".addrhelper-search-suggestion .addrhelper-search-address").removeClass("addrhelper-search-address-active")
-                }
-            })
-
-            this.geometryEditor.on("draw_complete", function (geometry) {
-                const activeOverlay = _this.geometryEditor.getActiveOverlay()
-                const currentGeometryIndex = activeOverlay.overlay.geometries.findIndex(function (item) {
-                    return item.id === geometry.id;
-                })
-                _this.drawGeometryPaths = activeOverlay.overlay.geometries[currentGeometryIndex].paths
-            })
+            if (this._options.created && typeof this._options.created === "function") {
+                this._options.created.call(this)
+            }
         }
 
         initMapConstant() {
@@ -696,6 +668,82 @@ layui.define(['jquery', 'layer'], function (exports) {
                 draw: TMap.tools.constants.EDITOR_ACTION.DRAW,
                 interact: TMap.tools.constants.EDITOR_ACTION.INTERACT,
             }
+        }
+
+        initMapListen() {
+            this.mapListen()
+            this.geometryEditorListen()
+        }
+
+        mapListen() {
+            const _this = this
+
+            this.map.on("mousemove", function (event) {
+                let lat = event.latLng.getLat().toFixed(6);
+                let lng = event.latLng.getLng().toFixed(6);
+                $(".addrhelper-getpoint-tips").css({
+                    top: event.point.y + 18,
+                    left: event.point.x + 18
+                }).html(`${lat},${lng}`).show()
+
+                // 鼠标吸附效果
+                // $("#addrhelper-map-container").addClass("addrhelper-cursor-point")
+            })
+
+            this.map.on("mouseout", function (event) {
+                // $("#addrhelper-map-container").removeClass("addrhelper-cursor-point")
+                $(".addrhelper-getpoint-tips").hide()
+            })
+
+            this.map.on("click", async function (event) {
+                if (!_this.isDrawMode()) {
+                    let lat = event.latLng.getLat().toFixed(6)
+                    let lng = event.latLng.getLng().toFixed(6)
+                    _this.setMakerLayer(lat, lng)
+                    const geocoderResponse = await _this.geocoder(lat, lng)
+                    if (geocoderResponse.status === 0) {
+                        const result = geocoderResponse.result
+                        _this.reloadSelectAddress(lat, lng, result?.formatted_addresses?.recommend ?? "", result.address)
+                        _this.setMapCenter(lat, lng)
+                    }
+                    // 隐藏搜索结果
+                    if (_this.suggestionOptions !== null) {
+                        $(".addrhelper-search-suggestion .addrhelper-search-list").hide()
+                        $(".addrhelper-search-suggestion .addrhelper-search-show-btn").css("height", 38)
+                        $(".addrhelper-search-suggestion .addrhelper-search-address").removeClass("addrhelper-search-address-active")
+                    }
+                }
+            })
+        }
+
+        geometryEditorListen() {
+            const _this = this
+
+            this.geometryEditor.on("draw_complete", function (geometry) {
+                ++_this.overlayZIndex
+                const activeOverlay = _this.getActiveOverlay()
+                activeOverlay.overlay.setZIndex(_this.overlayZIndex)
+                // console.log(activeOverlay.overlay.geometries)
+            })
+
+            this.geometryEditor.on("select", function (geometry) {
+                _this.selectGeometry = _this.geometryEditor.getSelectedList().pop()
+            })
+
+            this.geometryEditor.on("delete_complete", function (geometries) {
+                let findIndex = geometries.findIndex(function (item) {
+                    return item.id === _this.selectGeometry.id
+                })
+                findIndex !== -1 && (_this.selectGeometry = null)
+            })
+
+            this.geometryEditor.on('split_fail', function (res) {
+                layer.msg(res.message)
+            })
+
+            this.geometryEditor.on('union_fail', function (res) {
+                layer.msg(res.message)
+            })
         }
 
         eventListen() {
@@ -795,19 +843,32 @@ layui.define(['jquery', 'layer'], function (exports) {
             const _this = this
             $("body").on("click", ".addrhelper-toolbar", function (event) {
                 if (event.target !== event.currentTarget) {
-                    if (event.target.dataset.type === "delete") {
-                        _this.geometryEditor.delete()
-                    } else {
-                        if (event.target.dataset.type !== "marker") {
-                            _this.setEditorMode("draw")
-                            _this.geometryEditor.setActiveOverlay(event.target.dataset.type)
-                        } else {
-                            _this.setEditorMode("interact")
+                    let action = event.target.dataset.action
+                    const actionMap = {
+                        delete: function () {
+                            _this.geometryEditor.delete()
+                        },
+                        split: function () {
+                            _this.geometryEditor.split()
+                        },
+                        union: function () {
+                            _this.geometryEditor.union()
+                        },
+                        other: function () {
+                            if (action !== "marker") {
+                                _this.setEditorMode("draw")
+                                _this.geometryEditor.setActiveOverlay(action)
+                            } else {
+                                _this.setEditorMode("interact")
+                                _this.geometryEditor.stop()
+                            }
+                            activeTool && activeTool.removeClass("tool-active")
+                            activeTool = $(event.target)
+                            activeTool.addClass("tool-active")
                         }
-                        activeTool && activeTool.removeClass("tool-active")
-                        activeTool = $(event.target)
-                        activeTool.addClass("tool-active")
                     }
+                    const actionFunc = actionMap[action] === undefined ? actionMap.other : actionMap[action]
+                    actionFunc()
                 }
             })
         }
@@ -913,6 +974,82 @@ layui.define(['jquery', 'layer'], function (exports) {
                 throw new Error("编辑器操作模式mode非法")
             }
             this.geometryEditor.setActionMode(this.editorModeMap[mode])
+        }
+
+        /**
+         * 获取处于编辑状态的图层
+         * @returns {*}
+         */
+        getActiveOverlay() {
+            return this.geometryEditor.getActiveOverlay()
+        }
+
+        /**
+         * 绘制多边形
+         * @param styles 图层样式
+         * @param geometries 多边形数据
+         * @param editable 是否可编辑
+         * @param zIndex 图层顺序
+         * @returns {TMap.MultiPolygon|*}
+         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#7
+         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#10
+         *
+         */
+        drawMultiPolygon(styles, geometries, editable = false, zIndex = 0) {
+            if (!styles instanceof Object) {
+                throw new Error("styles参数必须是对象")
+            }
+            if (!Array.isArray(geometries)) {
+                throw new Error("geometries参数必须是数组")
+            }
+
+            const styleArr = []
+            for (let key in styles) {
+                if (styles[key].borderColor !== undefined || styles[key].borderWidth !== undefined) {
+                    styles[key].showBorder = true
+                }
+                if (styles[key].borderWidth === undefined) {
+                    styles[key].borderWidth = 1
+                }
+                styles[key] = new TMap.PolygonStyle(styles[key])
+                styleArr.push(key)
+            }
+
+            for (let geometry of geometries) {
+                if (geometry.styleId === undefined) {
+                    throw new Error("geometries缺少styleId属性")
+                }
+                if (!styleArr.includes(geometry.styleId)) {
+                    throw new Error("geometries的styleId属性值非法")
+                }
+                if (geometry.paths === undefined) {
+                    throw new Error("geometries缺少paths属性")
+                }
+                if (!Array.isArray(geometry.paths)) {
+                    throw new Error("geometries的paths属性值必须是数组")
+                }
+
+                geometry.paths = geometry.paths.map(function (path) {
+                    if (path.lat === undefined || path.lng === undefined) {
+                        throw new Error("geometries的paths属性值格式非法")
+                    }
+                    return new TMap.LatLng(path.lat, path.lng);
+                })
+            }
+
+            if (editable) {
+                const activeOverlay = this.getActiveOverlay().overlay
+                activeOverlay.setStyles(styles)
+                activeOverlay.add(geometries)
+                return activeOverlay
+            } else {
+                return new TMap.MultiPolygon({
+                    map: this.map,
+                    styles: styles,
+                    geometries: geometries,
+                    zIndex: zIndex
+                })
+            }
         }
 
         /**
