@@ -205,6 +205,7 @@ layui.define(['jquery', 'layer'], function (exports) {
                                 <div data-action="delete" class="tool tool-delete" title="删除"></div>
                                 <div data-action="split" class="tool tool-split" title="拆分"></div>
                                 <div data-action="union" class="tool tool-union" title="合并"></div>
+                                <div data-action="manual" class="tool tool-manual" title="手册"></div>
                             </div>    
                         </div>
                         <!-- 坐标信息 -->
@@ -226,16 +227,6 @@ layui.define(['jquery', 'layer'], function (exports) {
                                 <div class="label">POI ID</div>
                                 <div class="input poi"></div>
                             </div>
-                            <div class="item tips">
-                                <div class="label">绘画工具操作(非绘制模式)：</div>
-                                <div class="tip">单选：鼠标左键点击图形</div>
-                                <div class="tip">多选：按下ctrl键后点击多个图形</div>
-                                <div class="tip">删除：选中图形后按下delete键或点击删除按钮可删除图形</div>
-                                <div class="tip">编辑：选中图形后出现编辑点，拖动编辑点可移动顶点位置，双击实心编辑点可删除顶点</div>
-                                <div class="tip">拆分：选中单个多边形后可绘制拆分线，拆分线绘制完成后自动进行拆分</div>
-                                <div class="tip">合并：选中多个相邻多边形后可进行合并，飞地形式的多边形不支持合并</div>
-                                <div class="tip">中断：按下esc键可中断当前操作，点选的图形将取消选中，编辑过程将中断</div>
-                            </div>
                         </div>
                     </div>`,
                 area: [this._options.width, this._options.height],
@@ -243,7 +234,10 @@ layui.define(['jquery', 'layer'], function (exports) {
                 maxmin: true,
                 yes: function (index, layero) {
                     if (_this._options.success && typeof _this._options.success === "function") {
-                        _this._options.success.call(_this, _this.selectAddressInfo, _this.selectGeometry?.paths ?? null, index, layero)
+                        _this._options.success.call(_this, {
+                            addressInfo: _this.selectAddressInfo,
+                            geometryPaths: _this.selectGeometry?.paths ?? null
+                        })
                     }
                 },
                 cancel: function () {
@@ -260,6 +254,24 @@ layui.define(['jquery', 'layer'], function (exports) {
                       white-space: nowrap;
                       overflow: hidden;
                       text-overflow: ellipsis;
+                    }
+                    .addrhelper-tool-manual {
+                      padding: 10px;
+                    }
+                    .addrhelper-tool-manual .title {
+                      margin-bottom: 4px;
+                      font-size: 15px;
+                      color: #1b202c;
+                      line-height: 22px;
+                      font-weight: 600;
+                    }
+                    .addrhelper-tool-manual .tip {
+                      margin-bottom: 5px;
+                      color: #999999;
+                      font-size: 14px;
+                    }
+                    .addrhelper-tool-manual .tip .strong {
+                      font-weight: 600;
                     }
                     .addrhelper-getpoint {
                       height: 100%;
@@ -490,6 +502,9 @@ layui.define(['jquery', 'layer'], function (exports) {
                     .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool-union {
                       background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoAgMAAADxkFD+AAAACVBMVEVHcEwuUf94nP9ar54sAAAAAXRSTlMAQObYZgAAADVJREFUeAFjIAaIhoKAAxpTbBUQrKQykzE0NAwLMwtI05k5NTQUC3MK0K1UZoJDNASFSRgAAEQyidHYx61BAAAAAElFTkSuQmCC");
                     }
+                    .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-toolbar .tool-manual {
+                      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAAAXNSR0IArs4c6QAAAXNJREFUWEftmD9OwzAUh38vA+dg4AgstAxlRGLu1owsHKJwDLYQsSEmKnUNQ1suwMQluAB5yFWN0uoldexnKUj2Gv/5/Nl+eTZh4IUGzocEGLpC/9vgeMbnnOEOjAmA01AbzfbrkpzktFYa5XwPYK4JpQZ4kfMNAW+2Q2ZURHhXgt1O2hrciWAAtC7JSNkrosHRjB9BuDU16xpXH89UacA1V+UAcA+6OZYMmPMXgDMivKyeaKoBZ/rQBDTKTXmQtPsCJ0Bfc7ZdMpgMCn+XtjCTTnFooE4Gk0GfkBMlUNcZiuwHE5BawiqlW72zme0hYWBJwLWPrWNttPbgsXG8v+sBEgpmvG5KWnjTdDSU9qVLwmrj4OdJhsuqoO8YcG1JbB/Av4R1N1M1TpsIhxpsAlqrKpBae3CwgFEuTZJ6vyWOdO1UA4x8cZc4+/1JDo+/yqlw6ER6r+l8wIn5eCTx9gZ0mHT0Kk5PYNEpOgZIgKH2B2/wF+xgUDgHf+iiAAAAAElFTkSuQmCC");
+                    }
                     .addrhelper-getpoint .addrhelper-getpoint-map .addrhelper-getpoint-tips {
                       position: absolute;
                       z-index: 9999;
@@ -535,11 +550,6 @@ layui.define(['jquery', 'layer'], function (exports) {
                       font-size: 14px;
                       color: #1b202c;
                       font-weight: 400;
-                    }
-                    .addrhelper-getpoint .addrhelper-getpoint-info .tips .tip {
-                      margin-bottom: 5px;
-                      color: #999999;
-                      font-size: 14px;
                     }
                 </style>`)
             }
@@ -853,6 +863,25 @@ layui.define(['jquery', 'layer'], function (exports) {
                         },
                         union: function () {
                             _this.geometryEditor.union()
+                        },
+                        manual: function () {
+                            layer.open({
+                                type: 1,
+                                title: false,
+                                content: `
+                                    <div class="addrhelper-tool-manual">
+                                        <div class="title">绘画工具操作说明：</div>
+                                        <div class="tip"><span class="strong">单选</span>：鼠标左键点击图形</div>
+                                        <div class="tip"><span class="strong">多选</span>：按下ctrl键后点击多个图形</div>
+                                        <div class="tip"><span class="strong">删除</span>：选中图形后按下delete键或点击删除按钮可删除图形</div>
+                                        <div class="tip"><span class="strong">编辑</span>：选中图形后出现编辑点，拖动编辑点可移动顶点位置，双击实心编辑点可删除顶点</div>
+                                        <div class="tip"><span class="strong">拆分</span>：选中单个多边形后可绘制拆分线，拆分线绘制完成后自动进行拆分</div>
+                                        <div class="tip"><span class="strong">合并</span>：选中多个相邻多边形后可进行合并，飞地形式的多边形不支持合并</div>
+                                        <div class="tip"><span class="strong">中断</span>：按下esc键可中断当前操作，点选的图形将取消选中，编辑过程将中断</div>
+                                    </div>`,
+                                closeBtn: 0,
+                                shadeClose: true
+                            })
                         },
                         other: function () {
                             if (action !== "marker") {

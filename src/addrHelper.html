@@ -58,14 +58,14 @@
                     //     true
                     // )
                 },
-                success: function (address, points) { //可选项，确认后回调
-                    //address 选中的地址, points 选中的区域坐标
-                    console.log(address, points)
-                    if (address === null) {
+                success: function (res) { //可选项，确认后回调
+                    //addressInfo 选中的地址, geometryPaths 选中的区域坐标
+                    console.log(res)
+                    if (res.addressInfo === null) {
                         layer.msg("请选择地址后再提交", {icon: 2})
                         return
                     }
-                    layer.alert(JSON.stringify(address))
+                    layer.alert(JSON.stringify(res))
                     // this.close() //关闭坐标拾取器
                 }
             })

@@ -48,14 +48,15 @@
                 lng: 116.307484, //可选项，初始化经度
                 width: "80vw", //可选项，弹窗的宽度 默认80vw
                 height: "80vh", //可选项，弹窗的高度 默认80vh
-                success: function (address, points) { //可选项，地址选择成功后回调
-                    console.log(address, points)
-                    if (address === null) {
+                success: function (res) { //可选项，确认后回调
+                    //addressInfo 选中的地址, geometryPaths 选中的区域坐标
+                    console.log(res)
+                    if (res.addressInfo === null) {
                         layer.msg("请选择地址后再提交", {icon: 2})
                         return
                     }
-                    layer.alert(JSON.stringify(address))
-                    // addrHelper.close() //关闭坐标拾取器
+                    layer.alert(JSON.stringify(res))
+                    // this.close() //关闭坐标拾取器
                 }
             })
         })
