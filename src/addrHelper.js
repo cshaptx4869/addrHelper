@@ -1097,7 +1097,7 @@ layui.define(['jquery', 'layer'], function (exports) {
                 if (path.lat === undefined || path.lng === undefined) {
                     throw new Error("参数polygon格式非法")
                 }
-                return new TMap.LatLng(item.lat, item.lng)
+                return new TMap.LatLng(path.lat, path.lng)
             })
             return TMap.geometry.isPointInPolygon(latLng, latLngArr)
         }

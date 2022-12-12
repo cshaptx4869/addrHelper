@@ -55,6 +55,10 @@
                         layer.msg("请选择地址后再提交", {icon: 2})
                         return
                     }
+                    // if (res.geometryPaths) {
+                    //     console.log(this.isPointInPolygon(res.addressInfo, res.geometryPaths) ? '点在所选范围内' : '点在所选范围外')
+                    //     console.log(this.isPolygonIntersect(res.geometryPaths, res.geometryPaths) ? '区域之间有重叠' : '区域之间无重叠')
+                    // }
                     layer.alert(JSON.stringify(res))
                     // this.close() //关闭坐标拾取器
                 }
