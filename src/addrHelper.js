@@ -158,7 +158,7 @@ layui.define(['jquery', 'layer'], function (exports) {
             !this._options.cssDebug && this.dynamicLoadCss()
             this.eventListen()
             //注意：不支持file://方式使用Javascript API GL 详见 https://lbs.qq.com/webApi/javascriptGL/glGuide/glBasic
-            this.dynamicLoadJs(`https://map.qq.com/api/gljs?v=1.exp&key=${this._options.key}&libraries=tools`, () => {
+            this.dynamicLoadJs(`https://map.qq.com/api/gljs?v=1.exp&key=${this._options.key}&libraries=tools,geometry`, () => {
                 if (this._options.lat && this._options.lng) {
                     this.initMap(Number(this._options.lat), Number(this._options.lng))
                 } else {
@@ -1079,6 +1079,50 @@ layui.define(['jquery', 'layer'], function (exports) {
                     zIndex: zIndex
                 })
             }
+        }
+
+        /**
+         * 点是否在多边形内
+         * @param point
+         * @param polygon
+         * @returns {*}
+         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocGeometry
+         */
+        isPointInPolygon(point, polygon) {
+            if (point.lat === undefined || point.lng === undefined) {
+                throw new Error("参数point格式非法")
+            }
+            const latLng = new TMap.LatLng(point.lat, point.lng)
+            const latLngArr = polygon.map(function (path) {
+                if (path.lat === undefined || path.lng === undefined) {
+                    throw new Error("参数polygon格式非法")
+                }
+                return new TMap.LatLng(item.lat, item.lng)
+            })
+            return TMap.geometry.isPointInPolygon(latLng, latLngArr)
+        }
+
+        /**
+         * 判断多边形是否与多边形相交
+         * @param polygon1
+         * @param polygon2
+         * @returns {*}
+         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocGeometry
+         */
+        isPolygonIntersect(polygon1, polygon2) {
+            const latLngArr1 = polygon1.map(function (path) {
+                if (path.lat === undefined || path.lng === undefined) {
+                    throw new Error("参数polygon1格式非法")
+                }
+                return new TMap.LatLng(path.lat, path.lng)
+            })
+            const latLngArr2 = polygon2.map(function (path) {
+                if (path.lat === undefined || path.lng === undefined) {
+                    throw new Error("参数polygon2格式非法")
+                }
+                return new TMap.LatLng(path.lat, path.lng)
+            })
+            return TMap.geometry.isPolygonIntersect(latLngArr1, latLngArr2)
         }
 
         /**
