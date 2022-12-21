@@ -128,6 +128,7 @@ layui.define(['jquery', 'layer'], function (exports) {
             key: "", //必传，腾讯地图api key 申请方法见：https://lbs.qq.com/webApi/javascriptGL/glGuide/glBasic
             lat: 0, //可选项，初始化纬度
             lng: 0, //可选项，初始化经度
+            zoom: 13, //可选项，地图缩放级别
             title: "腾讯地图小助手", //可选项，弹窗标题
             width: "80vw", //可选项，弹窗的宽度
             height: "80vh", //可选项，弹窗的高度
@@ -594,7 +595,7 @@ layui.define(['jquery', 'layer'], function (exports) {
             //https://lbs.qq.com/webApi/javascriptGL/glDoc/docIndexMap
             this.map = new TMap.Map("addrhelper-map-container", {
                 center: new TMap.LatLng(lat, lng),
-                zoom: 13
+                zoom: this._options.zoom
             })
 
             //https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocMarker
