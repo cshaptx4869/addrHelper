@@ -1165,6 +1165,23 @@ layui.define(['jquery', 'layer'], function (exports) {
         }
 
         /**
+         * 计算多边形的形心
+         * @param polygon
+         * @returns {*}
+         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocGeometry
+         */
+        computeCentroid(polygon) {
+            const latLngArr = polygon.map(function (path) {
+                if (path.lat === undefined || path.lng === undefined) {
+                    throw new Error("参数polygon格式非法")
+                }
+                return new TMap.LatLng(path.lat, path.lng)
+            });
+
+            return TMap.geometry.computeCentroid(latLngArr)
+        }
+
+        /**
          * IP定位
          * @returns {*}
          * @link https://lbs.qq.com/service/webService/webServiceGuide/webServiceIp
