@@ -11,6 +11,7 @@
 </head>
 
 <body>
+    <div id="map"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/layui/2.6.8/layui.js"
         integrity="sha512-lH7rGfsFWwehkeyJYllBq73IsiR7RH2+wuOVjr06q8NKwHp5xVnkdSvUm8RNt31QCROqtPrjAAd1VuNH0ISxqQ=="
         crossorigin="anonymous" referrerpolicy="no-referrer">
@@ -26,8 +27,10 @@
             // 打开坐标拾取器
             addrHelper.render({
                 key: "", //必传，腾讯地图api key 申请方法见：https://lbs.qq.com/webApi/javascriptGL/glGuide/glBasic
+                // el: '#map', //可选项，渲染容器，为空则以弹窗形式打开 默认为空
                 lat: 30.03033, //可选项，初始化纬度
                 lng: 120.5802, //可选项，初始化经度
+                zoom: 13, //可选项，地图缩放级别 默认值13
                 width: "80vw", //可选项，弹窗的宽度 默认80vw
                 height: "80vh", //可选项，弹窗的高度 默认80vh
                 cssDebug: false, //可选项，主要为开发时调试样式

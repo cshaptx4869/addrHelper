@@ -126,6 +126,7 @@ layui.define(['jquery', 'layer'], function (exports) {
     class AddrHelper {
         _options = {
             key: "", //必传，腾讯地图api key 申请方法见：https://lbs.qq.com/webApi/javascriptGL/glGuide/glBasic
+            el: "", //可选项，渲染容器，为空则以弹窗形式打开
             lat: 0, //可选项，初始化纬度
             lng: 0, //可选项，初始化经度
             zoom: 13, //可选项，地图缩放级别
@@ -172,80 +173,90 @@ layui.define(['jquery', 'layer'], function (exports) {
             this.layerIndex && layer.close(this.layerIndex)
         }
 
+        ok() {
+            if (this._options.success && typeof this._options.success === "function") {
+                this._options.success.call(this, {
+                    addressInfo: this.selectAddressInfo,
+                    geometryPaths: this.selectGeometry?.paths ?? null
+                })
+            }
+        }
+
         dynamicLoadHtml() {
-            const _this = this
-            this.layerIndex = layer.open({
-                type: 1,
-                title: this._options.title,
-                content: `
-                    <div class="addrhelper-getpoint">
-                        <!-- 坐标拾取 -->
-                        <div class="addrhelper-getpoint-map">
-                            <div id="addrhelper-map-container"></div>
-                            <div class="addrhelper-getpoint-search">
-                                <input type="text" class="addrhelper-search-input" placeholder="输入地址" value="">
-                            </div>
-                            <div class="addrhelper-getpoint-tips"></div>
-                            <div class="addrhelper-search-suggestion">
-                                <div class="addrhelper-search-show-btn">
-                                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC4AAAAuCAYAAABXuSs3AAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAALqADAAQAAAABAAAALgAAAABSkiQEAAAB4UlEQVRoBe3YP0vDQBQA8Hdp8Q86VHRz8mOI0kVB9AN0dHMStEmWYkEcrJ3sv6EgiB/ASVzU1Yr6OUTwz1yUqM3zbii9BJuKfe8GuYOQd5fw7pdHyB0BsM1WwFbAVsBWwFZAq4C/dzRTKDentCGW0KHM6hWr+fDz7SVoB68y9ihzx3ORwRFRIMK+PBx5pEOEQ7dYL8QnpOqTwYUQKFFPOgwxLHPhyeAKnErBOgjRNoFP6ZMMG99eXz0uZFdbKCAnc4308uHyfHYtuG9d3vTGhotI4Ypy17p8MIEnh5vCs8BN4Nng3HhWOCeeHc6FNwLnwAuV1GTzi/XFDuAFIE7q8zoC3ErJreljSbFxuML8hBcCPmB6NlP1cu9J4O410iW/m3TgGXFCViwduQ+hM5d+DiNjCR3jcH+nthIKOJO7yTHdJTeVW7IF+lhSbBTeDy13lpu1g+3jJGj8mrF3PAldLeWbcdigvhE4NVo9FDucA80O50KzwjnRbHBuNAvcBFrBSTdZ3m59Sf6aOI8vLuo7/ZdPngL2a9Flt99dvxwPv/AEILoicqAVh2zlVD+E5Mc1oz8jF5oULpEIKHy1y5OLg9zhORvUr4deFPLYrZyONxqNUfLENqGtgK2ArYCtwL+qwDfBhRfsRIjmWgAAAABJRU5ErkJggg==" alt="">
-                                    <span>展开搜索列表</span>
-                                </div>
-                                <div class="addrhelper-search-list"></div>
-                            </div>
-                            <div class="addrhelper-satellite">
-                                <span class="icon"></span>
-                                <span>卫星</span>
-                            </div>
-                            <div class="addrhelper-toolbar">
-                                <div data-action="marker" class="tool tool-marker tool-active" title="点标记"></div>
-                                <div data-action="polygon" class="tool tool-polygon" title="多边形"></div>
-                                <div data-action="circle" class="tool tool-circle" title="圆形"></div>
-                                <div data-action="rectangle" class="tool tool-rectangle" title="矩形"></div>
-                                <div data-action="ellipse" class="tool tool-ellipse" title="椭圆"></div>
-                                <div data-action="delete" class="tool tool-delete" title="删除"></div>
-                                <div data-action="split" class="tool tool-split" title="拆分"></div>
-                                <div data-action="union" class="tool tool-union" title="合并"></div>
-                                <div data-action="manual" class="tool tool-manual" title="手册"></div>
-                            </div>    
+            const _this = this;
+            const content = `
+                <div class="addrhelper-getpoint">
+                    <!-- 坐标拾取 -->
+                    <div class="addrhelper-getpoint-map">
+                        <div id="addrhelper-map-container"></div>
+                        <div class="addrhelper-getpoint-search">
+                            <input type="text" class="addrhelper-search-input" placeholder="输入地址" value="">
                         </div>
-                        <!-- 坐标信息 -->
-                        <div class="addrhelper-getpoint-info">
-                            <div class="title">点图获取坐标</div>
-                            <div class="item">
-                                <div class="label">经度</div>
-                                <div class="input lng"></div>
+                        <div class="addrhelper-getpoint-tips"></div>
+                        <div class="addrhelper-search-suggestion">
+                            <div class="addrhelper-search-show-btn">
+                                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC4AAAAuCAYAAABXuSs3AAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAALqADAAQAAAABAAAALgAAAABSkiQEAAAB4UlEQVRoBe3YP0vDQBQA8Hdp8Q86VHRz8mOI0kVB9AN0dHMStEmWYkEcrJ3sv6EgiB/ASVzU1Yr6OUTwz1yUqM3zbii9BJuKfe8GuYOQd5fw7pdHyB0BsM1WwFbAVsBWwFZAq4C/dzRTKDentCGW0KHM6hWr+fDz7SVoB68y9ihzx3ORwRFRIMK+PBx5pEOEQ7dYL8QnpOqTwYUQKFFPOgwxLHPhyeAKnErBOgjRNoFP6ZMMG99eXz0uZFdbKCAnc4308uHyfHYtuG9d3vTGhotI4Ypy17p8MIEnh5vCs8BN4Nng3HhWOCeeHc6FNwLnwAuV1GTzi/XFDuAFIE7q8zoC3ErJreljSbFxuML8hBcCPmB6NlP1cu9J4O410iW/m3TgGXFCViwduQ+hM5d+DiNjCR3jcH+nthIKOJO7yTHdJTeVW7IF+lhSbBTeDy13lpu1g+3jJGj8mrF3PAldLeWbcdigvhE4NVo9FDucA80O50KzwjnRbHBuNAvcBFrBSTdZ3m59Sf6aOI8vLuo7/ZdPngL2a9Flt99dvxwPv/AEILoicqAVh2zlVD+E5Mc1oz8jF5oULpEIKHy1y5OLg9zhORvUr4deFPLYrZyONxqNUfLENqGtgK2ArYCtwL+qwDfBhRfsRIjmWgAAAABJRU5ErkJggg==" alt="">
+                                <span>展开搜索列表</span>
                             </div>
-                            <div class="item">
-                                <div class="label">纬度</div>
-                                <div class="input lat"></div>
-                            </div>
-                            <div class="item">
-                                <div class="label">地址</div>
-                                <div class="input address"></div>
-                            </div>
-                            <div class="item">
-                                <div class="label">POI ID</div>
-                                <div class="input poi"></div>
-                            </div>
+                            <div class="addrhelper-search-list"></div>
                         </div>
-                    </div>`,
-                area: [this._options.width, this._options.height],
-                btn: ['确定', '取消'],
-                maxmin: true,
-                yes: function (index, layero) {
-                    if (_this._options.success && typeof _this._options.success === "function") {
-                        _this._options.success.call(_this, {
-                            addressInfo: _this.selectAddressInfo,
-                            geometryPaths: _this.selectGeometry?.paths ?? null
-                        })
+                        <div class="addrhelper-satellite">
+                            <span class="icon"></span>
+                            <span>卫星</span>
+                        </div>
+                        <div class="addrhelper-toolbar">
+                            <div data-action="marker" class="tool tool-marker tool-active" title="点标记"></div>
+                            <div data-action="polygon" class="tool tool-polygon" title="多边形"></div>
+                            <div data-action="circle" class="tool tool-circle" title="圆形"></div>
+                            <div data-action="rectangle" class="tool tool-rectangle" title="矩形"></div>
+                            <div data-action="ellipse" class="tool tool-ellipse" title="椭圆"></div>
+                            <div data-action="delete" class="tool tool-delete" title="删除"></div>
+                            <div data-action="split" class="tool tool-split" title="拆分"></div>
+                            <div data-action="union" class="tool tool-union" title="合并"></div>
+                            <div data-action="manual" class="tool tool-manual" title="手册"></div>
+                        </div>    
+                    </div>
+                    <!-- 坐标信息 -->
+                    <div class="addrhelper-getpoint-info">
+                        <div class="title">点图获取坐标</div>
+                        <div class="item">
+                            <div class="label">经度</div>
+                            <div class="input lng"></div>
+                        </div>
+                        <div class="item">
+                            <div class="label">纬度</div>
+                            <div class="input lat"></div>
+                        </div>
+                        <div class="item">
+                            <div class="label">地址</div>
+                            <div class="input address"></div>
+                        </div>
+                        <div class="item">
+                            <div class="label">POI ID</div>
+                            <div class="input poi"></div>
+                        </div>
+                        ${this._options.el ? '<button class="addrhelper-ok-btn">确定</button>' : ''}
+                    </div>
+                </div>`
+            if (this._options.el) {
+                $(this._options.el).width(this._options.width).height(this._options.height).html(content)
+            } else {
+                this.layerIndex = layer.open({
+                    type: 1,
+                    title: this._options.title,
+                    content: content,
+                    area: [this._options.width, this._options.height],
+                    btn: ['确定', '取消'],
+                    maxmin: true,
+                    yes: function (index, layero) {
+                        _this.ok()
+                    },
+                    cancel: function () {
+                        //右上角关闭回调
+                        //return false 开启该代码可禁止点击该按钮关闭
                     }
-                },
-                cancel: function () {
-                    //右上角关闭回调
-                    //return false 开启该代码可禁止点击该按钮关闭
-                }
-            })
+                })
+            }
         }
 
         dynamicLoadCss() {
@@ -521,6 +532,7 @@ layui.define(['jquery', 'layer'], function (exports) {
                       padding: 25px 20px;
                       box-sizing: border-box;
                       word-break: break-all;
+                      position: relative;
                     }
                     .addrhelper-getpoint .addrhelper-getpoint-info .title {
                       font-size: 16px;
@@ -551,6 +563,24 @@ layui.define(['jquery', 'layer'], function (exports) {
                       font-size: 14px;
                       color: #1b202c;
                       font-weight: 400;
+                    }
+                    .addrhelper-getpoint .addrhelper-getpoint-info .addrhelper-ok-btn {
+                      outline: none;
+                      border: none;
+                      position: absolute;
+                      right: 20px;
+                      bottom: 0;
+                      height: 28px;
+                      line-height: 28px;
+                      padding: 0 15px;
+                      border-radius: 2px;
+                      background-color: #1E9FFF;
+                      color: #FFF;
+                      font-weight: 400;
+                      cursor: pointer;
+                    }
+                    .addrhelper-getpoint .addrhelper-getpoint-info .addrhelper-ok-btn:hover {
+                      opacity: 0.8;
                     }
                 </style>`)
             }
@@ -758,11 +788,19 @@ layui.define(['jquery', 'layer'], function (exports) {
         }
 
         eventListen() {
+            this._options.el && this.okBtnListen()
             this.inputListen()
             this.addressSelectListen()
             this.showListListen()
             this.baseMapListen()
             this.toolListen()
+        }
+
+        okBtnListen() {
+            var _this = this;
+            $('body').on('click', '.addrhelper-ok-btn', function () {
+                _this.ok();
+            })
         }
 
         /**

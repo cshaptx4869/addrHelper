@@ -322,6 +322,7 @@
     padding: 25px 20px;
     box-sizing: border-box;
     word-break: break-all;
+    position: relative;
 
     .title {
       font-size: 16px;
@@ -354,6 +355,26 @@
         font-size: 14px;
         color: #1b202c;
         font-weight: 400;
+      }
+    }
+
+    .addrhelper-ok-btn {
+      outline: none;
+      border: none;
+      position: absolute;
+      right: 20px;
+      bottom: 0;
+      height: 28px;
+      line-height: 28px;
+      padding: 0 15px;
+      border-radius: 2px;
+      background-color: #1E9FFF;
+      color: #FFF;
+      font-weight: 400;
+      cursor: pointer;
+
+      &:hover {
+        opacity: .8;
       }
     }
   }
