@@ -137,7 +137,7 @@ layui.define(['jquery', 'layer'], function (exports) {
             cssDebug: false //可选项，主要为开发时调试样式
         }
         map = null
-        makerLayer = null
+        markerLayer = null
         geometryEditor = null
         overlayZIndex = 9999
         controlTypeMap = null
@@ -629,7 +629,7 @@ layui.define(['jquery', 'layer'], function (exports) {
             })
 
             //https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocMarker
-            this.makerLayer = new TMap.MultiMarker({
+            this.markerLayer = new TMap.MultiMarker({
                 map: this.map
             })
 
@@ -740,7 +740,7 @@ layui.define(['jquery', 'layer'], function (exports) {
                 if (!_this.isDrawMode()) {
                     let lat = event.latLng.getLat().toFixed(6)
                     let lng = event.latLng.getLng().toFixed(6)
-                    _this.setMakerLayer(lat, lng)
+                    _this.setCurrentMarker(lat, lng)
                     const geocoderResponse = await _this.geocoder(lat, lng)
                     if (geocoderResponse.status === 0) {
                         const result = geocoderResponse.result
@@ -850,7 +850,7 @@ layui.define(['jquery', 'layer'], function (exports) {
                 const adInfo = JSON.parse(event.currentTarget.dataset.info)
                 _this.reloadSelectAddress(adInfo.location.lat, adInfo.location.lng, adInfo.title, adInfo.address, adInfo.id)
                 _this.setMapCenter(adInfo.location.lat, adInfo.location.lng)
-                _this.setMakerLayer(adInfo.location.lat, adInfo.location.lng)
+                _this.setCurrentMarker(adInfo.location.lat, adInfo.location.lng)
             })
         }
 
@@ -979,9 +979,9 @@ layui.define(['jquery', 'layer'], function (exports) {
          * @link https://lbs.qq.com/webApi/javascriptGL/glGuide/glMarker
          * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocMarker
          */
-        setMakerLayer(lat, lng) {
-            this.makerLayer.setGeometries([])
-            this.makerLayer.add([{
+        setCurrentMarker(lat, lng) {
+            this.markerLayer.setGeometries([])
+            this.markerLayer.add([{
                 position: new TMap.LatLng(lat, lng)
             }])
         }
@@ -1118,6 +1118,36 @@ layui.define(['jquery', 'layer'], function (exports) {
                     zIndex: zIndex
                 })
             }
+        }
+
+        /**
+         * 绘制点标记
+         * @param geometries
+         * @returns {TMap.MultiMarker}
+         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocMarker#4
+         */
+        drawMultiMarker(geometries) {
+            if (!Array.isArray(geometries)) {
+                throw new Error("geometries参数必须是数组")
+            }
+
+            const formatGeometries = []
+
+            geometries.forEach(function (item) {
+                if (item.lat === undefined || item.lng === undefined) {
+                    throw new Error("geometries参数格式非法")
+                }
+
+                formatGeometries.push({
+                    position: new TMap.LatLng(item.lat, item.lng),
+                    content: item?.content,
+                })
+            })
+
+            return new TMap.MultiMarker({
+                map: this.map,
+                geometries: formatGeometries
+            })
         }
 
         /**
