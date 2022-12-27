@@ -133,6 +133,7 @@ layui.define(['jquery', 'layer'], function (exports) {
             title: "腾讯地图小助手", //可选项，弹窗标题
             width: "80vw", //可选项，弹窗的宽度
             height: "80vh", //可选项，弹窗的高度
+            toolbar: true, //可选项，显示工具栏
             success: null, //可选项，地址选择成功后回调
             cssDebug: false //可选项，主要为开发时调试样式
         }
@@ -204,7 +205,7 @@ layui.define(['jquery', 'layer'], function (exports) {
                             <span class="icon"></span>
                             <span>卫星</span>
                         </div>
-                        <div class="addrhelper-toolbar">
+                        ${this._options.toolbar ? `<div class="addrhelper-toolbar">
                             <div data-action="marker" class="tool tool-marker tool-active" title="点标记"></div>
                             <div data-action="polygon" class="tool tool-polygon" title="多边形"></div>
                             <div data-action="circle" class="tool tool-circle" title="圆形"></div>
@@ -214,7 +215,7 @@ layui.define(['jquery', 'layer'], function (exports) {
                             <div data-action="split" class="tool tool-split" title="拆分"></div>
                             <div data-action="union" class="tool tool-union" title="合并"></div>
                             <div data-action="manual" class="tool tool-manual" title="手册"></div>
-                        </div>    
+                        </div>` : ''}
                     </div>
                     <!-- 坐标信息 -->
                     <div class="addrhelper-getpoint-info">
@@ -793,7 +794,7 @@ layui.define(['jquery', 'layer'], function (exports) {
             this.addressSelectListen()
             this.showListListen()
             this.baseMapListen()
-            this.toolListen()
+            this._options.toolbar && this.toolListen()
         }
 
         okBtnListen() {
