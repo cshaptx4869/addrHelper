@@ -2,7 +2,21 @@
 
 ## 简介
 
-腾讯地图坐标拾取器。基于腾讯地图 API 和 Layui 实现类似于微信小程序 [wx.getLocation(Object object)](https://developers.weixin.qq.com/miniprogram/dev/api/location/wx.getLocation.html) 效果。
+腾讯地图坐标拾取器。基于腾讯地图 API 实现类似于微信小程序 [wx.getLocation(Object object)](https://developers.weixin.qq.com/miniprogram/dev/api/location/wx.getLocation.html) 效果。
+
+此外还可以在地图上绘制区域，绘制点标记，判断两个区域是否相交，判断点是否在区域范围内等。
+
+## 接口
+
+- render()  渲染插件。
+  - 对 created、success 方法做了 this 绑定，this 指向 addrHelper 对象。
+  - 所以可以在这两个方法中，直接用 this 调用下面的 api。
+- drawMultiPolygon()  绘制多边形。
+- drawMultiMarker()  绘制点标记。
+- isPointInPolygon()  判断点是否在多边形内。
+- isPolygonIntersect()  判断多边形是否与多边形相交。
+
+注意：其他 api 必须在 render() 函数执行后才能正常使用，具体 api 传参格式可参照示例文件。
 
 ## 演示
 
@@ -17,6 +31,8 @@
 
 
 ## 示例
+
+### **Layui 方式引入**
 
 ```html
 <!doctype html>
@@ -54,6 +70,7 @@
                 toolbar: true, //可选项，显示工具栏 默认true
                 created: function () { //可选项，地图被创建后回调
                     // 绘制不可编辑的多边形
+                    // 可以用 this.drawMultiPolygon() 直接调用
                     addrHelper.drawMultiPolygon(
                         {
                             red: {
@@ -121,6 +138,109 @@
                     // addrHelper.close()
                 }
             })
+        })
+    </script>
+</body>
+
+</html>
+```
+
+### **JQuery 方式引入**
+
+```html
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>腾讯地图坐标拾取器</title>
+</head>
+
+<body>
+    <div id="map"></div>
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.3/jquery.js"></script>
+    <script src="./addrHelper.js"></script>
+    <script>
+        // 打开坐标拾取器
+        addrHelper.render({
+            key: "", //必传，腾讯地图api key 申请方法见：https://lbs.qq.com/webApi/javascriptGL/glGuide/glBasic
+            el: '#map', //必选项，渲染容器
+            lat: 30.03033, //可选项，初始化纬度
+            lng: 120.5802, //可选项，初始化经度
+            zoom: 13, //可选项，地图缩放级别 默认值13
+            width: "80vw", //可选项，弹窗的宽度 默认80vw
+            height: "80vh", //可选项，弹窗的高度 默认80vh
+            toolbar: true, //可选项，显示工具栏 默认true
+            created: function () { //可选项，地图被创建后回调
+                // 绘制不可编辑的多边形
+                addrHelper.drawMultiPolygon(
+                    {
+                        red: {
+                            color: "rgba(208, 80, 80, 0.16)",
+                            borderColor: "rgba(208, 80, 80, 1)",
+                        },
+                        blue: {
+                            color: "rgba(55, 119, 255, 0.16)",
+                            borderColor: "rgba(55, 119, 255, 1)",
+                        }
+                    },
+                    [
+                        {
+                            "styleId": "red",
+                            "paths": [
+                                { lat: 29.99624886560059, lng: 120.6099513512865 },
+                                { lat: 29.99521034937211, lng: 120.6099513512865 },
+                                { lat: 29.99521034937211, lng: 120.6084642659594 },
+                                { lat: 29.99624886560059, lng: 120.6084642659594 }
+                            ]
+                        }
+                    ]
+                )
+                // 绘制可编辑的多边形
+                addrHelper.drawMultiPolygon(
+                    {
+                        green: {
+                            color: "rgba(64, 160, 128, 0.16)",
+                            borderColor: "rgba(64, 160, 128, 1)",
+                        },
+                    },
+                    [
+                        {
+                            "styleId": "green",
+                            "paths": [
+                                { lat: 29.98023237402974, lng: 120.6169245254394 },
+                                { lat: 29.979618817541287, lng: 120.6169245254394 },
+                                { lat: 29.979618817541287, lng: 120.61598231201529 },
+                                { lat: 29.98023237402974, lng: 120.61598231201529 }
+                            ]
+                        }
+                    ],
+                    true
+                )
+
+                // 绘制点标记
+                addrHelper.drawMultiMarker([
+                    { lat: 29.995756, lng: 120.609328, content: '砥砺文化创业园' },
+                    { lat: 29.979950, lng: 120.616484, content: '科创大厦' },
+                ])
+            },
+            success: function (res) { //可选项，确认后回调
+                //addressInfo 选中的地址, geometryPaths 选中的区域坐标
+                console.log(res)
+                if (res.addressInfo === null) {
+                    layer.msg("请选择地址后再提交", { icon: 2 })
+                    return
+                }
+                layer.alert(JSON.stringify(res))
+                // if (res.geometryPaths) {
+                //     console.log(addrHelper.isPointInPolygon(res.addressInfo, res.geometryPaths) ? '点在所选范围内' : '点在所选范围外')
+                //     console.log(addrHelper.isPolygonIntersect(res.geometryPaths, res.geometryPaths) ? '区域之间有重叠' : '区域之间无重叠')
+                // }
+                // 关闭坐标拾取器
+                // addrHelper.close()
+            }
         })
     </script>
 </body>
