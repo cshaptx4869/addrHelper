@@ -1,191 +1,196 @@
-layui.define(['jquery', 'layer'], function (exports) {
-    "use strict"
-    const MOD_NAME = 'addrHelper'
-    const $ = layui.jquery
-    const layer = layui.layer
+(function (define) {
+    define(['jquery', 'layer'], function ($, layer) {
+        "use strict"
 
-    /**
-     * 发送请求类
-     */
-    class Request {
-        _options = {
-            baseUrl: "",
-            url: "",
-            type: "GET",
-            data: null,
-            extraData: null,
-            dataType: "json",
-            timeout: 0
+        if ($ === undefined) {
+            throw new Error("插件依赖jQuery，请先引入jQuery")
         }
 
-        constructor(baseUrl, timeout = 10000) {
-            this._options.baseUrl = baseUrl
-            this._options.timeout = timeout
-        }
-
-        jsonp(jsonp, jsonpCallback) {
-            this._options.dataType = "jsonp" //发送jsonp请求
-            jsonp && (this._options.jsonp = jsonp) //客户端用callback作为参数名将函数传递给服务器端
-            jsonpCallback && (this._options.jsonpCallback = jsonpCallback) //不想执行success回调函数，可指定函数名
-
-            return this
-        }
-
-        get(url, data = {}) {
-            this._options.type = "GET"
-            this._options.url = url
-            this._options.data = data
-            return this.send(this._options)
-        }
-
-        post(url, data = {}) {
-            this._options.type = "POST"
-            this._options.url = url
-            this._options.data = data
-            return this.send(this._options)
-        }
-
-        extraData(data) {
-            this._options.extraData = data
-            return this
-        }
-
-        send(options) {
-            if (options.extraData) {
-                options.data = {...options.data, ...options.extraData}
-            }
-            if (options.baseUrl) {
-                options.url = options.baseUrl + options.url
+        /**
+         * 发送请求类
+         */
+        class Request {
+            _options = {
+                baseUrl: "",
+                url: "",
+                type: "GET",
+                data: null,
+                extraData: null,
+                dataType: "json",
+                timeout: 0
             }
 
-            return new Promise(function (resolve, reject) {
-                $.ajax({
-                    url: options.url,
-                    type: options.type,
-                    data: options.data,
-                    dataType: options.dataType,
-                    timeout: options.timeout,
-                    success: function (res) {
-                        resolve(res)
-                    },
-                    error: function (err) {
-                        reject(err)
+            constructor(baseUrl, timeout = 10000) {
+                this._options.baseUrl = baseUrl
+                this._options.timeout = timeout
+            }
+
+            jsonp(jsonp, jsonpCallback) {
+                this._options.dataType = "jsonp" //发送jsonp请求
+                jsonp && (this._options.jsonp = jsonp) //客户端用callback作为参数名将函数传递给服务器端
+                jsonpCallback && (this._options.jsonpCallback = jsonpCallback) //不想执行success回调函数，可指定函数名
+
+                return this
+            }
+
+            get(url, data = {}) {
+                this._options.type = "GET"
+                this._options.url = url
+                this._options.data = data
+                return this.send(this._options)
+            }
+
+            post(url, data = {}) {
+                this._options.type = "POST"
+                this._options.url = url
+                this._options.data = data
+                return this.send(this._options)
+            }
+
+            extraData(data) {
+                this._options.extraData = data
+                return this
+            }
+
+            send(options) {
+                if (options.extraData) {
+                    options.data = {...options.data, ...options.extraData}
+                }
+                if (options.baseUrl) {
+                    options.url = options.baseUrl + options.url
+                }
+
+                return new Promise(function (resolve, reject) {
+                    $.ajax({
+                        url: options.url,
+                        type: options.type,
+                        data: options.data,
+                        dataType: options.dataType,
+                        timeout: options.timeout,
+                        success: function (res) {
+                            resolve(res)
+                        },
+                        error: function (err) {
+                            reject(err)
+                        }
+                    })
+                })
+            }
+        }
+
+        /**
+         * 工具类
+         */
+        class Utils {
+            /**
+             * 防抖
+             * @param fn
+             * @param delay
+             * @param immediate
+             * @returns {_debounce}
+             */
+            static debounce(fn, delay, immediate = false) {
+                // 1.定义一个定时器, 保存上一次的定时器
+                let timer = null
+                let isInvoke = false
+
+                // 2.真正执行的函数
+                const _debounce = function (...args) {
+                    // 取消上一次的定时器
+                    if (timer) clearTimeout(timer)
+
+                    // 判断是否需要立即执行
+                    if (immediate && !isInvoke) {
+                        fn.apply(this, args)
+                        isInvoke = true
+                    } else {
+                        // 延迟执行
+                        timer = setTimeout(() => {
+                            // 外部传入的真正要执行的函数
+                            fn.apply(this, args)
+                            isInvoke = false
+                            timer = null
+                        }, delay)
+                    }
+                }
+
+                // 封装取消功能
+                _debounce.cancel = function () {
+                    if (timer) clearTimeout(timer)
+                    timer = null
+                    isInvoke = false
+                }
+
+                return _debounce
+            }
+        }
+
+        class AddrHelper {
+            _options = {
+                key: "", //必传，腾讯地图api key 申请方法见：https://lbs.qq.com/webApi/javascriptGL/glGuide/glBasic
+                el: "", //可选项，渲染容器，为空则以弹窗形式打开
+                lat: 0, //可选项，初始化纬度
+                lng: 0, //可选项，初始化经度
+                zoom: 13, //可选项，地图缩放级别
+                title: "腾讯地图小助手", //可选项，弹窗标题
+                width: "80vw", //可选项，弹窗的宽度
+                height: "80vh", //可选项，弹窗的高度
+                toolbar: true, //可选项，显示工具栏
+                success: null, //可选项，地址选择成功后回调
+                cssDebug: false //可选项，主要为开发时调试样式
+            }
+            map = null
+            markerLayer = null
+            geometryEditor = null
+            overlayZIndex = 9999
+            controlTypeMap = null
+            controlPositionMap = null
+            editorModeMap = null
+            request = null
+            layerIndex = 0
+            locationInfo = null
+            suggestionOptions = null
+            selectAddressInfo = null
+            selectGeometry = null
+
+            render(options) {
+                this._options = {...this._options, ...options}
+                if (!this._options.key) {
+                    throw new Error("参数key必传")
+                }
+                if (layer === undefined && !this._options.el) {
+                    throw new Error("参数el必传")
+                }
+                this.request = new Request("https://apis.map.qq.com").jsonp().extraData({key: this._options.key, output: "jsonp"})
+                this.dynamicLoadHtml()
+                !this._options.cssDebug && this.dynamicLoadCss()
+                this.eventListen()
+                //注意：不支持file://方式使用Javascript API GL 详见 https://lbs.qq.com/webApi/javascriptGL/glGuide/glBasic
+                this.dynamicLoadJs(`https://map.qq.com/api/gljs?v=1.exp&key=${this._options.key}&libraries=tools,geometry`, () => {
+                    if (this._options.lat && this._options.lng) {
+                        this.initMap(Number(this._options.lat), Number(this._options.lng))
+                    } else {
+                        this.initMap()
                     }
                 })
-            })
-        }
-    }
+            }
 
-    /**
-     * 工具类
-     */
-    class Utils {
-        /**
-         * 防抖
-         * @param fn
-         * @param delay
-         * @param immediate
-         * @returns {_debounce}
-         */
-        static debounce(fn, delay, immediate = false) {
-            // 1.定义一个定时器, 保存上一次的定时器
-            let timer = null
-            let isInvoke = false
+            close(v) {
+                this.layerIndex && layer.close(this.layerIndex)
+            }
 
-            // 2.真正执行的函数
-            const _debounce = function (...args) {
-                // 取消上一次的定时器
-                if (timer) clearTimeout(timer)
-
-                // 判断是否需要立即执行
-                if (immediate && !isInvoke) {
-                    fn.apply(this, args)
-                    isInvoke = true
-                } else {
-                    // 延迟执行
-                    timer = setTimeout(() => {
-                        // 外部传入的真正要执行的函数
-                        fn.apply(this, args)
-                        isInvoke = false
-                        timer = null
-                    }, delay)
+            ok() {
+                if (this._options.success && typeof this._options.success === "function") {
+                    this._options.success.call(this, {
+                        addressInfo: this.selectAddressInfo,
+                        geometryPaths: this.selectGeometry?.paths ?? null
+                    })
                 }
             }
 
-            // 封装取消功能
-            _debounce.cancel = function () {
-                if (timer) clearTimeout(timer)
-                timer = null
-                isInvoke = false
-            }
-
-            return _debounce
-        }
-    }
-
-    class AddrHelper {
-        _options = {
-            key: "", //必传，腾讯地图api key 申请方法见：https://lbs.qq.com/webApi/javascriptGL/glGuide/glBasic
-            el: "", //可选项，渲染容器，为空则以弹窗形式打开
-            lat: 0, //可选项，初始化纬度
-            lng: 0, //可选项，初始化经度
-            zoom: 13, //可选项，地图缩放级别
-            title: "腾讯地图小助手", //可选项，弹窗标题
-            width: "80vw", //可选项，弹窗的宽度
-            height: "80vh", //可选项，弹窗的高度
-            toolbar: true, //可选项，显示工具栏
-            success: null, //可选项，地址选择成功后回调
-            cssDebug: false //可选项，主要为开发时调试样式
-        }
-        map = null
-        markerLayer = null
-        geometryEditor = null
-        overlayZIndex = 9999
-        controlTypeMap = null
-        controlPositionMap = null
-        editorModeMap = null
-        request = null
-        layerIndex = 0
-        locationInfo = null
-        suggestionOptions = null
-        selectAddressInfo = null
-        selectGeometry = null
-
-        render(options) {
-            this._options = {...this._options, ...options}
-            if (!this._options.key) {
-                throw new Error("参数key必传")
-            }
-            this.request = new Request("https://apis.map.qq.com").jsonp().extraData({key: this._options.key, output: "jsonp"})
-            this.dynamicLoadHtml()
-            !this._options.cssDebug && this.dynamicLoadCss()
-            this.eventListen()
-            //注意：不支持file://方式使用Javascript API GL 详见 https://lbs.qq.com/webApi/javascriptGL/glGuide/glBasic
-            this.dynamicLoadJs(`https://map.qq.com/api/gljs?v=1.exp&key=${this._options.key}&libraries=tools,geometry`, () => {
-                if (this._options.lat && this._options.lng) {
-                    this.initMap(Number(this._options.lat), Number(this._options.lng))
-                } else {
-                    this.initMap()
-                }
-            })
-        }
-
-        close(v) {
-            this.layerIndex && layer.close(this.layerIndex)
-        }
-
-        ok() {
-            if (this._options.success && typeof this._options.success === "function") {
-                this._options.success.call(this, {
-                    addressInfo: this.selectAddressInfo,
-                    geometryPaths: this.selectGeometry?.paths ?? null
-                })
-            }
-        }
-
-        dynamicLoadHtml() {
-            const _this = this;
-            const content = `
+            dynamicLoadHtml() {
+                const _this = this;
+                const content = `
                 <div class="addrhelper-getpoint">
                     <!-- 坐标拾取 -->
                     <div class="addrhelper-getpoint-map">
@@ -239,30 +244,30 @@ layui.define(['jquery', 'layer'], function (exports) {
                         ${this._options.el ? '<button class="addrhelper-ok-btn">确定</button>' : ''}
                     </div>
                 </div>`
-            if (this._options.el) {
-                $(this._options.el).width(this._options.width).height(this._options.height).html(content)
-            } else {
-                this.layerIndex = layer.open({
-                    type: 1,
-                    title: this._options.title,
-                    content: content,
-                    area: [this._options.width, this._options.height],
-                    btn: ['确定', '取消'],
-                    maxmin: true,
-                    yes: function (index, layero) {
-                        _this.ok()
-                    },
-                    cancel: function () {
-                        //右上角关闭回调
-                        //return false 开启该代码可禁止点击该按钮关闭
-                    }
-                })
+                if (this._options.el) {
+                    $(this._options.el).width(this._options.width).height(this._options.height).html(content)
+                } else {
+                    this.layerIndex = layer.open({
+                        type: 1,
+                        title: this._options.title,
+                        content: content,
+                        area: [this._options.width, this._options.height],
+                        btn: ['确定', '取消'],
+                        maxmin: true,
+                        yes: function (index, layero) {
+                            _this.ok()
+                        },
+                        cancel: function () {
+                            //右上角关闭回调
+                            //return false 开启该代码可禁止点击该按钮关闭
+                        }
+                    })
+                }
             }
-        }
 
-        dynamicLoadCss() {
-            if (!$('style#addrHelperCSS').length) {
-                $("head").append(`<style id="addrHelperCSS">
+            dynamicLoadCss() {
+                if (!$('style#addrHelperCSS').length) {
+                    $("head").append(`<style id="addrHelperCSS">
                     .addrhelper-text-ellipsis {
                       white-space: nowrap;
                       overflow: hidden;
@@ -584,240 +589,240 @@ layui.define(['jquery', 'layer'], function (exports) {
                       opacity: 0.8;
                     }
                 </style>`)
-            }
-        }
-
-        /**
-         * 动态加载 js
-         * @param url
-         * @param callback
-         */
-        dynamicLoadJs(url, callback) {
-            var script = document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = url;
-            if (typeof (callback) == 'function') {
-                script.onload = script.onreadystatechange = function () {
-                    if (!this.readyState || this.readyState === "loaded" || this.readyState === "complete") {
-                        callback();
-                        script.onload = script.onreadystatechange = null;
-                    }
-                };
-            }
-            document.body.appendChild(script);
-        }
-
-        /**
-         * 初始化地图
-         * @param lat
-         * @param lng
-         * @returns {Promise<void>}
-         */
-        async initMap(lat, lng) {
-            if (!lat || !lng) {
-                let ipLocationReturn = await this.ipLocation()
-                if (ipLocationReturn.status === 0) {
-                    lat = ipLocationReturn.result.location.lat
-                    lng = ipLocationReturn.result.location.lng
-                    this.locationInfo = ipLocationReturn.result
                 }
             }
 
-            //https://lbs.qq.com/webApi/javascriptGL/glDoc/docIndexMap
-            this.map = new TMap.Map("addrhelper-map-container", {
-                center: new TMap.LatLng(lat, lng),
-                zoom: this._options.zoom
-            })
-
-            //https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocMarker
-            this.markerLayer = new TMap.MultiMarker({
-                map: this.map
-            })
-
-            //附加库：地图工具 使用此库 地图会变成 2D 的
-            //https://lbs.qq.com/webApi/javascriptGL/glGuide/glEditor
-            //https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocEditor
-            this.geometryEditor = new TMap.tools.GeometryEditor({
-                map: this.map,
-                overlayList: [
-                    {
-                        id: 'polygon',
-                        // https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#7
-                        overlay: new TMap.MultiPolygon({
-                            map: this.map,
-                            zIndex: this.overlayZIndex
-                        }),
-                    },
-                    {
-                        id: 'circle',
-                        // https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#13
-                        overlay: new TMap.MultiCircle({
-                            map: this.map,
-                        }),
-                    },
-                    {
-                        id: 'rectangle',
-                        // https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#MultiRectangle
-                        overlay: new TMap.MultiRectangle({
-                            map: this.map,
-                        }),
-                    },
-                    {
-                        id: 'ellipse',
-                        // https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#MultiEllipse
-                        overlay: new TMap.MultiEllipse({
-                            map: this.map,
-                        }),
-                    },
-                ],
-                actionMode: TMap.tools.constants.EDITOR_ACTION.INTERACT,
-                activeOverlayId: "polygon",
-                snappable: true,
-                selectable: true
-            })
-
-            this.initMapConstant()
-            this.initMapListen()
-
-            this.setZoomControl("bottom-left", true)
-            this.removeControl("rotation")
-
-            if (this._options.created && typeof this._options.created === "function") {
-                this._options.created.call(this)
-            }
-        }
-
-        initMapConstant() {
-            this.controlTypeMap = {
-                scale: TMap.constants.DEFAULT_CONTROL_ID.SCALE,
-                zoom: TMap.constants.DEFAULT_CONTROL_ID.ZOOM,
-                rotation: TMap.constants.DEFAULT_CONTROL_ID.ROTATION,
+            /**
+             * 动态加载 js
+             * @param url
+             * @param callback
+             */
+            dynamicLoadJs(url, callback) {
+                var script = document.createElement('script');
+                script.type = 'text/javascript';
+                script.src = url;
+                if (typeof (callback) == 'function') {
+                    script.onload = script.onreadystatechange = function () {
+                        if (!this.readyState || this.readyState === "loaded" || this.readyState === "complete") {
+                            callback();
+                            script.onload = script.onreadystatechange = null;
+                        }
+                    };
+                }
+                document.body.appendChild(script);
             }
 
-            this.controlPositionMap = {
-                "top-left": TMap.constants.CONTROL_POSITION.TOP_LEFT,
-                "top-center": TMap.constants.CONTROL_POSITION.TOP_CENTER,
-                "top-right": TMap.constants.CONTROL_POSITION.TOP_RIGHT,
-                "center-left": TMap.constants.CONTROL_POSITION.CENTER_LEFT,
-                "center": TMap.constants.CONTROL_POSITION.CENTER,
-                "center-right": TMap.constants.CONTROL_POSITION.CENTER_RIGHT,
-                "bottom-left": TMap.constants.CONTROL_POSITION.BOTTOM_LEFT,
-                "bottom-center": TMap.constants.CONTROL_POSITION.BOTTOM_CENTER,
-                "bottom-right": TMap.constants.CONTROL_POSITION.BOTTOM_RIGHT,
-            }
-
-            this.editorModeMap = {
-                draw: TMap.tools.constants.EDITOR_ACTION.DRAW,
-                interact: TMap.tools.constants.EDITOR_ACTION.INTERACT,
-            }
-        }
-
-        initMapListen() {
-            this.mapListen()
-            this.geometryEditorListen()
-        }
-
-        mapListen() {
-            const _this = this
-
-            this.map.on("mousemove", function (event) {
-                let lat = event.latLng.getLat().toFixed(6);
-                let lng = event.latLng.getLng().toFixed(6);
-                $(".addrhelper-getpoint-tips").css({
-                    top: event.point.y + 18,
-                    left: event.point.x + 18
-                }).html(`${lat},${lng}`).show()
-
-                // 鼠标吸附效果
-                // $("#addrhelper-map-container").addClass("addrhelper-cursor-point")
-            })
-
-            this.map.on("mouseout", function (event) {
-                // $("#addrhelper-map-container").removeClass("addrhelper-cursor-point")
-                $(".addrhelper-getpoint-tips").hide()
-            })
-
-            this.map.on("click", async function (event) {
-                if (!_this.isDrawMode()) {
-                    let lat = event.latLng.getLat().toFixed(6)
-                    let lng = event.latLng.getLng().toFixed(6)
-                    _this.setCurrentMarker(lat, lng)
-                    const geocoderResponse = await _this.geocoder(lat, lng)
-                    if (geocoderResponse.status === 0) {
-                        const result = geocoderResponse.result
-                        _this.reloadSelectAddress(lat, lng, result?.formatted_addresses?.recommend ?? "", result.address)
-                        _this.setMapCenter(lat, lng)
-                    }
-                    // 隐藏搜索结果
-                    if (_this.suggestionOptions !== null) {
-                        $(".addrhelper-search-suggestion .addrhelper-search-list").hide()
-                        $(".addrhelper-search-suggestion .addrhelper-search-show-btn").css("height", 38)
-                        $(".addrhelper-search-suggestion .addrhelper-search-address").removeClass("addrhelper-search-address-active")
+            /**
+             * 初始化地图
+             * @param lat
+             * @param lng
+             * @returns {Promise<void>}
+             */
+            async initMap(lat, lng) {
+                if (!lat || !lng) {
+                    let ipLocationReturn = await this.ipLocation()
+                    if (ipLocationReturn.status === 0) {
+                        lat = ipLocationReturn.result.location.lat
+                        lng = ipLocationReturn.result.location.lng
+                        this.locationInfo = ipLocationReturn.result
                     }
                 }
-            })
-        }
 
-        geometryEditorListen() {
-            const _this = this
-
-            this.geometryEditor.on("draw_complete", function (geometry) {
-                ++_this.overlayZIndex
-                const activeOverlay = _this.getActiveOverlay()
-                activeOverlay.overlay.setZIndex(_this.overlayZIndex)
-                // console.log(activeOverlay.overlay.geometries)
-            })
-
-            this.geometryEditor.on("select", function (geometry) {
-                _this.selectGeometry = _this.geometryEditor.getSelectedList().pop()
-            })
-
-            this.geometryEditor.on("delete_complete", function (geometries) {
-                let findIndex = geometries.findIndex(function (item) {
-                    return item.id === _this.selectGeometry.id
+                //https://lbs.qq.com/webApi/javascriptGL/glDoc/docIndexMap
+                this.map = new TMap.Map("addrhelper-map-container", {
+                    center: new TMap.LatLng(lat, lng),
+                    zoom: this._options.zoom
                 })
-                findIndex !== -1 && (_this.selectGeometry = null)
-            })
 
-            this.geometryEditor.on('split_fail', function (res) {
-                layer.msg(res.message)
-            })
+                //https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocMarker
+                this.markerLayer = new TMap.MultiMarker({
+                    map: this.map
+                })
 
-            this.geometryEditor.on('union_fail', function (res) {
-                layer.msg(res.message)
-            })
-        }
+                //附加库：地图工具 使用此库 地图会变成 2D 的
+                //https://lbs.qq.com/webApi/javascriptGL/glGuide/glEditor
+                //https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocEditor
+                this.geometryEditor = new TMap.tools.GeometryEditor({
+                    map: this.map,
+                    overlayList: [
+                        {
+                            id: 'polygon',
+                            // https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#7
+                            overlay: new TMap.MultiPolygon({
+                                map: this.map,
+                                zIndex: this.overlayZIndex
+                            }),
+                        },
+                        {
+                            id: 'circle',
+                            // https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#13
+                            overlay: new TMap.MultiCircle({
+                                map: this.map,
+                            }),
+                        },
+                        {
+                            id: 'rectangle',
+                            // https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#MultiRectangle
+                            overlay: new TMap.MultiRectangle({
+                                map: this.map,
+                            }),
+                        },
+                        {
+                            id: 'ellipse',
+                            // https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#MultiEllipse
+                            overlay: new TMap.MultiEllipse({
+                                map: this.map,
+                            }),
+                        },
+                    ],
+                    actionMode: TMap.tools.constants.EDITOR_ACTION.INTERACT,
+                    activeOverlayId: "polygon",
+                    snappable: true,
+                    selectable: true
+                })
 
-        eventListen() {
-            this._options.el && this.okBtnListen()
-            this.inputListen()
-            this.addressSelectListen()
-            this.showListListen()
-            this.baseMapListen()
-            this._options.toolbar && this.toolListen()
-        }
+                this.initMapConstant()
+                this.initMapListen()
 
-        okBtnListen() {
-            var _this = this;
-            $('body').on('click', '.addrhelper-ok-btn', function () {
-                _this.ok();
-            })
-        }
+                this.setZoomControl("bottom-left", true)
+                this.removeControl("rotation")
 
-        /**
-         * 搜索监听
-         */
-        inputListen() {
-            const _this = this
-            $("body").on('input', ".addrhelper-search-input", Utils.debounce(async function (event) {
-                if (event.currentTarget.value) {
-                    let region = _this.locationInfo ? _this.locationInfo.ad_info.city : ""
-                    const suggestionReturn = await _this.suggestion(this.value, region)
-                    let suggestion = ""
-                    if (suggestionReturn.status === 0) {
-                        _this.suggestionOptions = suggestionReturn.data
-                        suggestionReturn.data.forEach(function (item, index, arr) {
-                            suggestion += `
+                if (this._options.created && typeof this._options.created === "function") {
+                    this._options.created.call(this)
+                }
+            }
+
+            initMapConstant() {
+                this.controlTypeMap = {
+                    scale: TMap.constants.DEFAULT_CONTROL_ID.SCALE,
+                    zoom: TMap.constants.DEFAULT_CONTROL_ID.ZOOM,
+                    rotation: TMap.constants.DEFAULT_CONTROL_ID.ROTATION,
+                }
+
+                this.controlPositionMap = {
+                    "top-left": TMap.constants.CONTROL_POSITION.TOP_LEFT,
+                    "top-center": TMap.constants.CONTROL_POSITION.TOP_CENTER,
+                    "top-right": TMap.constants.CONTROL_POSITION.TOP_RIGHT,
+                    "center-left": TMap.constants.CONTROL_POSITION.CENTER_LEFT,
+                    "center": TMap.constants.CONTROL_POSITION.CENTER,
+                    "center-right": TMap.constants.CONTROL_POSITION.CENTER_RIGHT,
+                    "bottom-left": TMap.constants.CONTROL_POSITION.BOTTOM_LEFT,
+                    "bottom-center": TMap.constants.CONTROL_POSITION.BOTTOM_CENTER,
+                    "bottom-right": TMap.constants.CONTROL_POSITION.BOTTOM_RIGHT,
+                }
+
+                this.editorModeMap = {
+                    draw: TMap.tools.constants.EDITOR_ACTION.DRAW,
+                    interact: TMap.tools.constants.EDITOR_ACTION.INTERACT,
+                }
+            }
+
+            initMapListen() {
+                this.mapListen()
+                this.geometryEditorListen()
+            }
+
+            mapListen() {
+                const _this = this
+
+                this.map.on("mousemove", function (event) {
+                    let lat = event.latLng.getLat().toFixed(6);
+                    let lng = event.latLng.getLng().toFixed(6);
+                    $(".addrhelper-getpoint-tips").css({
+                        top: event.point.y + 18,
+                        left: event.point.x + 18
+                    }).html(`${lat},${lng}`).show()
+
+                    // 鼠标吸附效果
+                    // $("#addrhelper-map-container").addClass("addrhelper-cursor-point")
+                })
+
+                this.map.on("mouseout", function (event) {
+                    // $("#addrhelper-map-container").removeClass("addrhelper-cursor-point")
+                    $(".addrhelper-getpoint-tips").hide()
+                })
+
+                this.map.on("click", async function (event) {
+                    if (!_this.isDrawMode()) {
+                        let lat = event.latLng.getLat().toFixed(6)
+                        let lng = event.latLng.getLng().toFixed(6)
+                        _this.setCurrentMarker(lat, lng)
+                        const geocoderResponse = await _this.geocoder(lat, lng)
+                        if (geocoderResponse.status === 0) {
+                            const result = geocoderResponse.result
+                            _this.reloadSelectAddress(lat, lng, result?.formatted_addresses?.recommend ?? "", result.address)
+                            _this.setMapCenter(lat, lng)
+                        }
+                        // 隐藏搜索结果
+                        if (_this.suggestionOptions !== null) {
+                            $(".addrhelper-search-suggestion .addrhelper-search-list").hide()
+                            $(".addrhelper-search-suggestion .addrhelper-search-show-btn").css("height", 38)
+                            $(".addrhelper-search-suggestion .addrhelper-search-address").removeClass("addrhelper-search-address-active")
+                        }
+                    }
+                })
+            }
+
+            geometryEditorListen() {
+                const _this = this
+
+                this.geometryEditor.on("draw_complete", function (geometry) {
+                    ++_this.overlayZIndex
+                    const activeOverlay = _this.getActiveOverlay()
+                    activeOverlay.overlay.setZIndex(_this.overlayZIndex)
+                    // console.log(activeOverlay.overlay.geometries)
+                })
+
+                this.geometryEditor.on("select", function (geometry) {
+                    _this.selectGeometry = _this.geometryEditor.getSelectedList().pop()
+                })
+
+                this.geometryEditor.on("delete_complete", function (geometries) {
+                    let findIndex = geometries.findIndex(function (item) {
+                        return item.id === _this.selectGeometry.id
+                    })
+                    findIndex !== -1 && (_this.selectGeometry = null)
+                })
+
+                this.geometryEditor.on('split_fail', function (res) {
+                    layer.msg(res.message)
+                })
+
+                this.geometryEditor.on('union_fail', function (res) {
+                    layer.msg(res.message)
+                })
+            }
+
+            eventListen() {
+                this._options.el && this.okBtnListen()
+                this.inputListen()
+                this.addressSelectListen()
+                this.showListListen()
+                this.baseMapListen()
+                this._options.toolbar && this.toolListen()
+            }
+
+            okBtnListen() {
+                var _this = this;
+                $('body').on('click', '.addrhelper-ok-btn', function () {
+                    _this.ok();
+                })
+            }
+
+            /**
+             * 搜索监听
+             */
+            inputListen() {
+                const _this = this
+                $("body").on('input', ".addrhelper-search-input", Utils.debounce(async function (event) {
+                    if (event.currentTarget.value) {
+                        let region = _this.locationInfo ? _this.locationInfo.ad_info.city : ""
+                        const suggestionReturn = await _this.suggestion(this.value, region)
+                        let suggestion = ""
+                        if (suggestionReturn.status === 0) {
+                            _this.suggestionOptions = suggestionReturn.data
+                            suggestionReturn.data.forEach(function (item, index, arr) {
+                                suggestion += `
                                 <div class="addrhelper-search-address" data-info='${JSON.stringify(item)}'>
                                     <div class="border">
                                         <div class="index">${index + 1}</div>
@@ -827,88 +832,88 @@ layui.define(['jquery', 'layer'], function (exports) {
                                         </div>
                                     </div>
                                 </div>`
-                        })
+                            })
+                            $('.addrhelper-search-suggestion .addrhelper-search-show-btn').css("height", 0)
+                            $('.addrhelper-search-suggestion .addrhelper-search-list').html(suggestion).show()
+                        }
+                    } else {
+                        $('.addrhelper-search-suggestion .addrhelper-search-list').html("")
                         $('.addrhelper-search-suggestion .addrhelper-search-show-btn').css("height", 0)
-                        $('.addrhelper-search-suggestion .addrhelper-search-list').html(suggestion).show()
+                        _this.suggestionOptions = null
+                        _this.locationInfo && _this.setMapCenter(_this.locationInfo.location.lat, _this.locationInfo.location.lng)
                     }
-                } else {
-                    $('.addrhelper-search-suggestion .addrhelper-search-list').html("")
-                    $('.addrhelper-search-suggestion .addrhelper-search-show-btn').css("height", 0)
-                    _this.suggestionOptions = null
-                    _this.locationInfo && _this.setMapCenter(_this.locationInfo.location.lat, _this.locationInfo.location.lng)
-                }
-            }, 500))
-        }
+                }, 500))
+            }
 
-        /**
-         * 地址选中监听
-         */
-        addressSelectListen() {
-            const _this = this
-            $("body").on("click", ".addrhelper-search-address", function (event) {
-                $(".addrhelper-search-address").removeClass("addrhelper-search-address-active")
-                $(this).addClass("addrhelper-search-address-active")
-                const adInfo = JSON.parse(event.currentTarget.dataset.info)
-                _this.reloadSelectAddress(adInfo.location.lat, adInfo.location.lng, adInfo.title, adInfo.address, adInfo.id)
-                _this.setMapCenter(adInfo.location.lat, adInfo.location.lng)
-                _this.setCurrentMarker(adInfo.location.lat, adInfo.location.lng)
-            })
-        }
+            /**
+             * 地址选中监听
+             */
+            addressSelectListen() {
+                const _this = this
+                $("body").on("click", ".addrhelper-search-address", function (event) {
+                    $(".addrhelper-search-address").removeClass("addrhelper-search-address-active")
+                    $(this).addClass("addrhelper-search-address-active")
+                    const adInfo = JSON.parse(event.currentTarget.dataset.info)
+                    _this.reloadSelectAddress(adInfo.location.lat, adInfo.location.lng, adInfo.title, adInfo.address, adInfo.id)
+                    _this.setMapCenter(adInfo.location.lat, adInfo.location.lng)
+                    _this.setCurrentMarker(adInfo.location.lat, adInfo.location.lng)
+                })
+            }
 
-        /**
-         * 地址展开监听
-         */
-        showListListen() {
-            $("body").on("click", ".addrhelper-search-suggestion .addrhelper-search-show-btn", function () {
-                $(this).css("height", 0)
-                $(".addrhelper-search-suggestion .addrhelper-search-list").show()
-            })
-        }
+            /**
+             * 地址展开监听
+             */
+            showListListen() {
+                $("body").on("click", ".addrhelper-search-suggestion .addrhelper-search-show-btn", function () {
+                    $(this).css("height", 0)
+                    $(".addrhelper-search-suggestion .addrhelper-search-list").show()
+                })
+            }
 
-        /**
-         * 底图监听
-         */
-        baseMapListen() {
-            const _this = this
-            $("body").on("click", ".addrhelper-satellite", function () {
-                let baseMapType = ""
-                if ($(this).hasClass("addrhelper-satellite-active")) {
-                    $(this).removeClass("addrhelper-satellite-active")
-                    $(this).find(".icon").removeClass("icon-active")
-                    baseMapType = "vector"
-                } else {
-                    $(this).addClass("addrhelper-satellite-active")
-                    $(this).find(".icon").addClass("icon-active")
-                    baseMapType = "satellite"
-                }
-                _this.map.setBaseMap({type: baseMapType})
-            })
-        }
+            /**
+             * 底图监听
+             */
+            baseMapListen() {
+                const _this = this
+                $("body").on("click", ".addrhelper-satellite", function () {
+                    let baseMapType = ""
+                    if ($(this).hasClass("addrhelper-satellite-active")) {
+                        $(this).removeClass("addrhelper-satellite-active")
+                        $(this).find(".icon").removeClass("icon-active")
+                        baseMapType = "vector"
+                    } else {
+                        $(this).addClass("addrhelper-satellite-active")
+                        $(this).find(".icon").addClass("icon-active")
+                        baseMapType = "satellite"
+                    }
+                    _this.map.setBaseMap({type: baseMapType})
+                })
+            }
 
-        /**
-         * 工具监听
-         */
-        toolListen() {
-            let activeTool = $(".addrhelper-toolbar .tool-marker")
-            const _this = this
-            $("body").on("click", ".addrhelper-toolbar", function (event) {
-                if (event.target !== event.currentTarget) {
-                    let action = event.target.dataset.action
-                    const actionMap = {
-                        delete: function () {
-                            _this.geometryEditor.delete()
-                        },
-                        split: function () {
-                            _this.geometryEditor.split()
-                        },
-                        union: function () {
-                            _this.geometryEditor.union()
-                        },
-                        manual: function () {
-                            layer.open({
-                                type: 1,
-                                title: false,
-                                content: `
+            /**
+             * 工具监听
+             */
+            toolListen() {
+                let activeTool = $(".addrhelper-toolbar .tool-marker")
+                const _this = this
+                $("body").on("click", ".addrhelper-toolbar", function (event) {
+                    if (event.target !== event.currentTarget) {
+                        let action = event.target.dataset.action
+                        const actionMap = {
+                            delete: function () {
+                                _this.geometryEditor.delete()
+                            },
+                            split: function () {
+                                _this.geometryEditor.split()
+                            },
+                            union: function () {
+                                _this.geometryEditor.union()
+                            },
+                            manual: function () {
+                                layer.open({
+                                    type: 1,
+                                    title: false,
+                                    content: `
                                     <div class="addrhelper-tool-manual">
                                         <div class="title">绘画工具操作说明：</div>
                                         <div class="tip"><span class="strong">单选</span>：鼠标左键点击图形</div>
@@ -919,337 +924,349 @@ layui.define(['jquery', 'layer'], function (exports) {
                                         <div class="tip"><span class="strong">合并</span>：选中多个相邻多边形后可进行合并，飞地形式的多边形不支持合并</div>
                                         <div class="tip"><span class="strong">中断</span>：按下esc键可中断当前操作，点选的图形将取消选中，编辑过程将中断</div>
                                     </div>`,
-                                closeBtn: 0,
-                                shadeClose: true
-                            })
-                        },
-                        other: function () {
-                            if (action !== "marker") {
-                                _this.setEditorMode("draw")
-                                _this.geometryEditor.setActiveOverlay(action)
-                            } else {
-                                _this.setEditorMode("interact")
-                                _this.geometryEditor.stop()
+                                    closeBtn: 0,
+                                    shadeClose: true
+                                })
+                            },
+                            other: function () {
+                                if (action !== "marker") {
+                                    _this.setEditorMode("draw")
+                                    _this.geometryEditor.setActiveOverlay(action)
+                                } else {
+                                    _this.setEditorMode("interact")
+                                    _this.geometryEditor.stop()
+                                }
+                                activeTool && activeTool.removeClass("tool-active")
+                                activeTool = $(event.target)
+                                activeTool.addClass("tool-active")
                             }
-                            activeTool && activeTool.removeClass("tool-active")
-                            activeTool = $(event.target)
-                            activeTool.addClass("tool-active")
                         }
+                        const actionFunc = actionMap[action] === undefined ? actionMap.other : actionMap[action]
+                        actionFunc()
                     }
-                    const actionFunc = actionMap[action] === undefined ? actionMap.other : actionMap[action]
-                    actionFunc()
-                }
-            })
-        }
-
-        /**
-         * 渲染选中地址
-         * @param lat
-         * @param lng
-         * @param title
-         * @param address
-         * @param poi
-         */
-        reloadSelectAddress(lat, lng, title, address, poi = "") {
-            $('.addrhelper-getpoint-info .title').html(title)
-            $('.addrhelper-getpoint-info .lat').html(lat)
-            $('.addrhelper-getpoint-info .lng').html(lng)
-            $('.addrhelper-getpoint-info .address').html(address)
-            $('.addrhelper-getpoint-info .poi').html(poi)
-            this.selectAddressInfo = {lat, lng, title, address, poi}
-        }
-
-        /**
-         * 设置地图中心
-         * @param lat
-         * @param lng
-         * @link https://lbs.qq.com/webApi/javascriptGL/glGuide/glMap
-         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/docIndexMap
-         */
-        setMapCenter(lat, lng) {
-            this.map.easeTo(
-                {center: new TMap.LatLng(lat, lng)}
-            )
-            // this.map.setCenter(new TMap.LatLng(lat, lng))
-        }
-
-        /**
-         * 点标记
-         * @param lat
-         * @param lng
-         * @link https://lbs.qq.com/webApi/javascriptGL/glGuide/glMarker
-         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocMarker
-         */
-        setCurrentMarker(lat, lng) {
-            this.markerLayer.setGeometries([])
-            this.markerLayer.add([{
-                position: new TMap.LatLng(lat, lng)
-            }])
-        }
-
-        /**
-         * 控件
-         * @link https://lbs.qq.com/webApi/javascriptGL/glGuide/glMarker
-         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocControl
-         * @param type
-         * @returns {*}
-         */
-        getControl(type) {
-            if (this.controlTypeMap[type] === undefined) {
-                throw new Error("控件type非法")
-            }
-            return this.map.getControl(this.controlTypeMap[type])
-        }
-
-        /**
-         * 移除控件
-         * @param type
-         * @returns {*}
-         */
-        removeControl(type) {
-            if (this.controlTypeMap[type] === undefined) {
-                throw new Error("控件type非法")
-            }
-            return this.map.removeControl(this.controlTypeMap[type])
-        }
-
-        /**
-         * 设置缩放控件
-         * @param position
-         * @param numVisible
-         * @returns {*}
-         */
-        setZoomControl(position = "bottom-right", numVisible = false) {
-            if (this.controlPositionMap[position] === undefined) {
-                position = "bottom-right"
-            }
-            return this.map.getControl("zoom").setPosition(this.controlPositionMap[position]).setNumVisible(numVisible)
-        }
-
-        /**
-         * 是否是绘画模式
-         * @returns {boolean}
-         */
-        isDrawMode() {
-            return this.geometryEditor.getActionMode() === this.editorModeMap["draw"]
-        }
-
-        /**
-         * 设置编辑器模式
-         * @param mode
-         */
-        setEditorMode(mode) {
-            if (this.editorModeMap[mode] === undefined) {
-                throw new Error("编辑器操作模式mode非法")
-            }
-            this.geometryEditor.setActionMode(this.editorModeMap[mode])
-        }
-
-        /**
-         * 获取处于编辑状态的图层
-         * @returns {*}
-         */
-        getActiveOverlay() {
-            return this.geometryEditor.getActiveOverlay()
-        }
-
-        /**
-         * 绘制多边形
-         * @param styles 图层样式
-         * @param geometries 多边形数据
-         * @param editable 是否可编辑
-         * @param zIndex 图层顺序
-         * @returns {TMap.MultiPolygon|*}
-         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#7
-         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#10
-         *
-         */
-        drawMultiPolygon(styles, geometries, editable = false, zIndex = 0) {
-            if (!styles instanceof Object) {
-                throw new Error("styles参数必须是对象")
-            }
-            if (!Array.isArray(geometries)) {
-                throw new Error("geometries参数必须是数组")
-            }
-
-            const styleArr = []
-            for (let key in styles) {
-                if (styles[key].borderColor !== undefined || styles[key].borderWidth !== undefined) {
-                    styles[key].showBorder = true
-                }
-                if (styles[key].borderWidth === undefined) {
-                    styles[key].borderWidth = 1
-                }
-                styles[key] = new TMap.PolygonStyle(styles[key])
-                styleArr.push(key)
-            }
-
-            for (let geometry of geometries) {
-                if (geometry.styleId === undefined) {
-                    throw new Error("geometries缺少styleId属性")
-                }
-                if (!styleArr.includes(geometry.styleId)) {
-                    throw new Error("geometries的styleId属性值非法")
-                }
-                if (geometry.paths === undefined) {
-                    throw new Error("geometries缺少paths属性")
-                }
-                if (!Array.isArray(geometry.paths)) {
-                    throw new Error("geometries的paths属性值必须是数组")
-                }
-
-                geometry.paths = geometry.paths.map(function (path) {
-                    if (path.lat === undefined || path.lng === undefined) {
-                        throw new Error("geometries的paths属性值格式非法")
-                    }
-                    return new TMap.LatLng(path.lat, path.lng);
                 })
             }
 
-            if (editable) {
-                const activeOverlay = this.getActiveOverlay().overlay
-                activeOverlay.setStyles(styles)
-                activeOverlay.add(geometries)
-                return activeOverlay
-            } else {
-                return new TMap.MultiPolygon({
+            /**
+             * 渲染选中地址
+             * @param lat
+             * @param lng
+             * @param title
+             * @param address
+             * @param poi
+             */
+            reloadSelectAddress(lat, lng, title, address, poi = "") {
+                $('.addrhelper-getpoint-info .title').html(title)
+                $('.addrhelper-getpoint-info .lat').html(lat)
+                $('.addrhelper-getpoint-info .lng').html(lng)
+                $('.addrhelper-getpoint-info .address').html(address)
+                $('.addrhelper-getpoint-info .poi').html(poi)
+                this.selectAddressInfo = {lat, lng, title, address, poi}
+            }
+
+            /**
+             * 设置地图中心
+             * @param lat
+             * @param lng
+             * @link https://lbs.qq.com/webApi/javascriptGL/glGuide/glMap
+             * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/docIndexMap
+             */
+            setMapCenter(lat, lng) {
+                this.map.easeTo(
+                    {center: new TMap.LatLng(lat, lng)}
+                )
+                // this.map.setCenter(new TMap.LatLng(lat, lng))
+            }
+
+            /**
+             * 点标记
+             * @param lat
+             * @param lng
+             * @link https://lbs.qq.com/webApi/javascriptGL/glGuide/glMarker
+             * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocMarker
+             */
+            setCurrentMarker(lat, lng) {
+                this.markerLayer.setGeometries([])
+                this.markerLayer.add([{
+                    position: new TMap.LatLng(lat, lng)
+                }])
+            }
+
+            /**
+             * 控件
+             * @link https://lbs.qq.com/webApi/javascriptGL/glGuide/glMarker
+             * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocControl
+             * @param type
+             * @returns {*}
+             */
+            getControl(type) {
+                if (this.controlTypeMap[type] === undefined) {
+                    throw new Error("控件type非法")
+                }
+                return this.map.getControl(this.controlTypeMap[type])
+            }
+
+            /**
+             * 移除控件
+             * @param type
+             * @returns {*}
+             */
+            removeControl(type) {
+                if (this.controlTypeMap[type] === undefined) {
+                    throw new Error("控件type非法")
+                }
+                return this.map.removeControl(this.controlTypeMap[type])
+            }
+
+            /**
+             * 设置缩放控件
+             * @param position
+             * @param numVisible
+             * @returns {*}
+             */
+            setZoomControl(position = "bottom-right", numVisible = false) {
+                if (this.controlPositionMap[position] === undefined) {
+                    position = "bottom-right"
+                }
+                return this.map.getControl("zoom").setPosition(this.controlPositionMap[position]).setNumVisible(numVisible)
+            }
+
+            /**
+             * 是否是绘画模式
+             * @returns {boolean}
+             */
+            isDrawMode() {
+                return this.geometryEditor.getActionMode() === this.editorModeMap["draw"]
+            }
+
+            /**
+             * 设置编辑器模式
+             * @param mode
+             */
+            setEditorMode(mode) {
+                if (this.editorModeMap[mode] === undefined) {
+                    throw new Error("编辑器操作模式mode非法")
+                }
+                this.geometryEditor.setActionMode(this.editorModeMap[mode])
+            }
+
+            /**
+             * 获取处于编辑状态的图层
+             * @returns {*}
+             */
+            getActiveOverlay() {
+                return this.geometryEditor.getActiveOverlay()
+            }
+
+            /**
+             * 绘制多边形
+             * @param styles 图层样式
+             * @param geometries 多边形数据
+             * @param editable 是否可编辑
+             * @param zIndex 图层顺序
+             * @returns {TMap.MultiPolygon|*}
+             * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#7
+             * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocVector#10
+             *
+             */
+            drawMultiPolygon(styles, geometries, editable = false, zIndex = 0) {
+                if (!styles instanceof Object) {
+                    throw new Error("styles参数必须是对象")
+                }
+                if (!Array.isArray(geometries)) {
+                    throw new Error("geometries参数必须是数组")
+                }
+
+                const styleArr = []
+                for (let key in styles) {
+                    if (styles[key].borderColor !== undefined || styles[key].borderWidth !== undefined) {
+                        styles[key].showBorder = true
+                    }
+                    if (styles[key].borderWidth === undefined) {
+                        styles[key].borderWidth = 1
+                    }
+                    styles[key] = new TMap.PolygonStyle(styles[key])
+                    styleArr.push(key)
+                }
+
+                for (let geometry of geometries) {
+                    if (geometry.styleId === undefined) {
+                        throw new Error("geometries缺少styleId属性")
+                    }
+                    if (!styleArr.includes(geometry.styleId)) {
+                        throw new Error("geometries的styleId属性值非法")
+                    }
+                    if (geometry.paths === undefined) {
+                        throw new Error("geometries缺少paths属性")
+                    }
+                    if (!Array.isArray(geometry.paths)) {
+                        throw new Error("geometries的paths属性值必须是数组")
+                    }
+
+                    geometry.paths = geometry.paths.map(function (path) {
+                        if (path.lat === undefined || path.lng === undefined) {
+                            throw new Error("geometries的paths属性值格式非法")
+                        }
+                        return new TMap.LatLng(path.lat, path.lng);
+                    })
+                }
+
+                if (editable) {
+                    const activeOverlay = this.getActiveOverlay().overlay
+                    activeOverlay.setStyles(styles)
+                    activeOverlay.add(geometries)
+                    return activeOverlay
+                } else {
+                    return new TMap.MultiPolygon({
+                        map: this.map,
+                        styles: styles,
+                        geometries: geometries,
+                        zIndex: zIndex
+                    })
+                }
+            }
+
+            /**
+             * 绘制点标记
+             * @param geometries
+             * @returns {TMap.MultiMarker}
+             * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocMarker#4
+             */
+            drawMultiMarker(geometries) {
+                if (!Array.isArray(geometries)) {
+                    throw new Error("geometries参数必须是数组")
+                }
+
+                const formatGeometries = []
+
+                geometries.forEach(function (item) {
+                    if (item.lat === undefined || item.lng === undefined) {
+                        throw new Error("geometries参数格式非法")
+                    }
+
+                    formatGeometries.push({
+                        position: new TMap.LatLng(item.lat, item.lng),
+                        content: item?.content,
+                    })
+                })
+
+                return new TMap.MultiMarker({
                     map: this.map,
-                    styles: styles,
-                    geometries: geometries,
-                    zIndex: zIndex
+                    geometries: formatGeometries
+                })
+            }
+
+            /**
+             * 点是否在多边形内
+             * @param point
+             * @param polygon
+             * @returns {*}
+             * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocGeometry
+             */
+            isPointInPolygon(point, polygon) {
+                if (point.lat === undefined || point.lng === undefined) {
+                    throw new Error("参数point格式非法")
+                }
+                const latLng = new TMap.LatLng(point.lat, point.lng)
+                const latLngArr = polygon.map(function (path) {
+                    if (path.lat === undefined || path.lng === undefined) {
+                        throw new Error("参数polygon格式非法")
+                    }
+                    return new TMap.LatLng(path.lat, path.lng)
+                })
+                return TMap.geometry.isPointInPolygon(latLng, latLngArr)
+            }
+
+            /**
+             * 判断多边形是否与多边形相交
+             * @param polygon1
+             * @param polygon2
+             * @returns {*}
+             * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocGeometry
+             */
+            isPolygonIntersect(polygon1, polygon2) {
+                const latLngArr1 = polygon1.map(function (path) {
+                    if (path.lat === undefined || path.lng === undefined) {
+                        throw new Error("参数polygon1格式非法")
+                    }
+                    return new TMap.LatLng(path.lat, path.lng)
+                })
+                const latLngArr2 = polygon2.map(function (path) {
+                    if (path.lat === undefined || path.lng === undefined) {
+                        throw new Error("参数polygon2格式非法")
+                    }
+                    return new TMap.LatLng(path.lat, path.lng)
+                })
+                return TMap.geometry.isPolygonIntersect(latLngArr1, latLngArr2)
+            }
+
+            /**
+             * 计算多边形的形心
+             * @param polygon
+             * @returns {*}
+             * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocGeometry
+             */
+            computeCentroid(polygon) {
+                const latLngArr = polygon.map(function (path) {
+                    if (path.lat === undefined || path.lng === undefined) {
+                        throw new Error("参数polygon格式非法")
+                    }
+                    return new TMap.LatLng(path.lat, path.lng)
+                });
+
+                return TMap.geometry.computeCentroid(latLngArr)
+            }
+
+            /**
+             * IP定位
+             * @returns {*}
+             * @link https://lbs.qq.com/service/webService/webServiceGuide/webServiceIp
+             */
+            ipLocation() {
+                return this.request.get("/ws/location/v1/ip")
+            }
+
+            /**
+             * 关键词输入提示
+             * @param keyword
+             * @param region
+             * @param regionFix
+             * @returns {*}
+             * @link https://lbs.qq.com/service/webService/webServiceGuide/webServiceSuggestion
+             */
+            suggestion(keyword, region = "", regionFix = 0) {
+                return this.request.get('/ws/place/v1/suggestion', {
+                    keyword,
+                    region,
+                    region_fix: regionFix
+                })
+            }
+
+            /**
+             * 逆地址解析（坐标位置描述）
+             * @param lat
+             * @param lng
+             * @returns {*}
+             * @link https://lbs.qq.com/service/webService/webServiceGuide/webServiceGcoder
+             */
+            geocoder(lat, lng) {
+                return this.request.get('/ws/geocoder/v1', {
+                    location: `${lat},${lng}`
                 })
             }
         }
 
-        /**
-         * 绘制点标记
-         * @param geometries
-         * @returns {TMap.MultiMarker}
-         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocMarker#4
-         */
-        drawMultiMarker(geometries) {
-            if (!Array.isArray(geometries)) {
-                throw new Error("geometries参数必须是数组")
-            }
-
-            const formatGeometries = []
-
-            geometries.forEach(function (item) {
-                if (item.lat === undefined || item.lng === undefined) {
-                    throw new Error("geometries参数格式非法")
-                }
-
-                formatGeometries.push({
-                    position: new TMap.LatLng(item.lat, item.lng),
-                    content: item?.content,
-                })
-            })
-
-            return new TMap.MultiMarker({
-                map: this.map,
-                geometries: formatGeometries
-            })
-        }
-
-        /**
-         * 点是否在多边形内
-         * @param point
-         * @param polygon
-         * @returns {*}
-         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocGeometry
-         */
-        isPointInPolygon(point, polygon) {
-            if (point.lat === undefined || point.lng === undefined) {
-                throw new Error("参数point格式非法")
-            }
-            const latLng = new TMap.LatLng(point.lat, point.lng)
-            const latLngArr = polygon.map(function (path) {
-                if (path.lat === undefined || path.lng === undefined) {
-                    throw new Error("参数polygon格式非法")
-                }
-                return new TMap.LatLng(path.lat, path.lng)
-            })
-            return TMap.geometry.isPointInPolygon(latLng, latLngArr)
-        }
-
-        /**
-         * 判断多边形是否与多边形相交
-         * @param polygon1
-         * @param polygon2
-         * @returns {*}
-         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocGeometry
-         */
-        isPolygonIntersect(polygon1, polygon2) {
-            const latLngArr1 = polygon1.map(function (path) {
-                if (path.lat === undefined || path.lng === undefined) {
-                    throw new Error("参数polygon1格式非法")
-                }
-                return new TMap.LatLng(path.lat, path.lng)
-            })
-            const latLngArr2 = polygon2.map(function (path) {
-                if (path.lat === undefined || path.lng === undefined) {
-                    throw new Error("参数polygon2格式非法")
-                }
-                return new TMap.LatLng(path.lat, path.lng)
-            })
-            return TMap.geometry.isPolygonIntersect(latLngArr1, latLngArr2)
-        }
-
-        /**
-         * 计算多边形的形心
-         * @param polygon
-         * @returns {*}
-         * @link https://lbs.qq.com/webApi/javascriptGL/glDoc/glDocGeometry
-         */
-        computeCentroid(polygon) {
-            const latLngArr = polygon.map(function (path) {
-                if (path.lat === undefined || path.lng === undefined) {
-                    throw new Error("参数polygon格式非法")
-                }
-                return new TMap.LatLng(path.lat, path.lng)
-            });
-
-            return TMap.geometry.computeCentroid(latLngArr)
-        }
-
-        /**
-         * IP定位
-         * @returns {*}
-         * @link https://lbs.qq.com/service/webService/webServiceGuide/webServiceIp
-         */
-        ipLocation() {
-            return this.request.get("/ws/location/v1/ip")
-        }
-
-        /**
-         * 关键词输入提示
-         * @param keyword
-         * @param region
-         * @param regionFix
-         * @returns {*}
-         * @link https://lbs.qq.com/service/webService/webServiceGuide/webServiceSuggestion
-         */
-        suggestion(keyword, region = "", regionFix = 0) {
-            return this.request.get('/ws/place/v1/suggestion', {
-                keyword,
-                region,
-                region_fix: regionFix
-            })
-        }
-
-        /**
-         * 逆地址解析（坐标位置描述）
-         * @param lat
-         * @param lng
-         * @returns {*}
-         * @link https://lbs.qq.com/service/webService/webServiceGuide/webServiceGcoder
-         */
-        geocoder(lat, lng) {
-            return this.request.get('/ws/geocoder/v1', {
-                location: `${lat},${lng}`
-            })
-        }
+        return new AddrHelper()
+    })
+}(typeof define === 'function' && define.amd ? define : function (deps, factory) {
+    var MOD_NAME = 'addrHelper';
+    if (typeof module !== 'undefined' && module.exports) { //Node
+        module.exports = factory(require('jquery'));
+    } else if (window.layui && layui.define) { //layui
+        layui.define(deps, function (exports) {
+            exports(MOD_NAME, factory(layui.jquery, layui.layer));
+        });
+    } else { //window
+        window[MOD_NAME] = factory(window.jQuery);
     }
-
-    exports(MOD_NAME, new AddrHelper());
-})
+}))
